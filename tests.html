@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BodyFit — Browser Tests</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #0f172a; color: #e2e8f0; padding: 24px; max-width: 880px; margin: 0 auto; }
+    h1, h2 { color: #7dd3fc; }
+    .ok { color: #34d399; }
+    .fail { color: #f87171; }
+    #summary { font-size: 18px; font-weight: 700; border-top: 1px solid #334155; margin-top: 18px; padding-top: 12px; }
+    pre { white-space: pre-wrap; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>BodyFit — Browser Tests</h1>
+  <p>Jalankan dengan server statis (contoh: <code>python -m http.server 8000</code>) lalu buka <code>tests.html</code>.</p>
+  <pre id="output"></pre>
+  <div id="summary"></div>
+
+  <header id="site-header"></header>
+  <footer id="site-footer"></footer>
+  <div id="test-chart-box" class="chart-box" style="position:relative;height:200px"></div>
+  <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
+  <div id="modal-root"></div>
+
+  <script type="module">
+    import { renderProgressChart } from './js/charts/progress-chart.js';
+    import { hydrateIcons } from './js/ui/icons.js';
+    import { initShell } from './js/ui/shell.js';
+    import { initCalculator } from './js/ui/calculator-ui.js';
+    import { setAssessment, setRecommendation, createPlanFromRecommendation, savePlan, resetState, getState, getPlan, getCurrentWeek, addCheckin, hasCheckinForWeek, incrementWeek, completedCount, toggleWorkout } from './js/state.js';
+    import { buildAssessment } from './js/calculator/assessment.js';
+    import { buildRecommendation } from './js/recommendation/engine.js';
+    import { validateBackup, applyImport } from './js/export-import.js';
+    import { validateCalculatorForm, validateCheckinForm } from './js/validation.js';
+    import { icon, hasIcon } from './js/ui/icons.js';
+
+    const output = document.getElementById('output');
+    let passed = 0, failed = 0;
+    const failures = [];
+
+    function log(line, cls = '') {
+      output.textContent += (cls ? `\n[${cls}] ` : '\n') + line;
+    }
+
+    function test(name, fn) {
+      return Promise.resolve()
+        .then(fn)
+        .then(() => { passed++; log(`ok   ${name}`, 'ok'); })
+        .catch((e) => { failed++; failures.push(name); log(`FAIL ${name} — ${e.message}`, 'fail'); });
+    }
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    let outpass = Promise.resolve();
+
+    async function suite() {
+      /* ---- nonspecific ---- */
+      await test('classify via buildAssessment golden', async () => {
+        const a = buildAssessment({ gender: 'male', age: 28, weight: 85, height: 180, neck: 40, waist: 100, activityLevel: 'moderate', targetWeight: null, targetWeightManual: false });
+        if (a.category !== 'high') throw new Error(`kategori ${a.category}`);
+        if (a.bodyFat !== a.bodyFat) throw new Error('NaN bodyFat');
+      });
+
+      await test('validation errors waist<=neck', async () => {
+        const res = validateCalculatorForm({ gender: 'male', age: 25, weight: 70, height: 170, neck: 40, waist: 35, activityLevel: 'moderate', targetWeight: '' });
+        if (res.ok) throw new Error('seharusnya gagal');
+        if (!res.errors.waist) throw new Error('waist error missing');
+      });
+
+      await test('validation checkin ok', async () => {
+        const res = validateCheckinForm({ weight: '70', waist: '80', bodyFat: '20', workoutsCompleted: '4', energy: '3', difficulty: '3', feedback: '' });
+        if (!res.ok) throw new Error(JSON.stringify(res.errors));
+      });
+
+      /* ---- storage / import/export ---- */
+      await test('validateBackup reject+accept', () => {
+        if (validateBackup({ app: 'notbodyfit' }).ok) throw new Error('must reject');
+        if (validateBackup({ app: 'bodyfit', state: {} }).ok) throw new Error('state invalid (no version)');
+        if (!validateBackup({ app: 'bodyfit', state: { version: 1, assessment: null, checkins: [], progress: [], workoutStatus: {} } }).ok) throw new Error('should accept');
+      });
+
+      await test('applyImport mengisi state', async () => {
+        resetState();
+        const ok = applyImport({ version: 1, assessment: null, checkins: [], progress: [], workoutStatus: {}, preferences: { unit: 'metric' } });
+        if (!ok.ok) throw new Error(ok.error);
+        if (!getState()) throw new Error('state kosong setelah import');
+      });
+
+      /* ---- icon & shell ---- */
+      await test('icon set lengkap', () => {
+        for (const n of ['calculator', 'shield-check', 'clock', 'percent', 'user', 'users', 'target', 'activity', 'calendar', 'moon']) {
+          if (!hasIcon(n)) throw new Error(`ikon ${n} hilang`);
+        }
+        if (!icon('calculator').includes('<svg')) throw new Error('svg tidak dirender');
+      });
+
+      await test('data-icon ter-hydrate', () => {
+        document.body.insertAdjacentHTML('beforeend', '<div id="tmp-icon" data-icon="calculator"></div>');
+        hydrateIcons();
+        if (!document.getElementById('tmp-icon').querySelector('svg')) throw new Error('svg tidak masuk');
+        document.getElementById('tmp-icon').remove();
+      });
+
+      await test('shell merender nav + footer + menu', async () => {
+        initShell();
+        const links = document.querySelectorAll('#site-header .nav-desktop .nav-link');
+        if (links.length !== 4) throw new Error(`nav ${links.length}`);
+        const footer = document.getElementById('btn-export');
+        if (!footer) throw new Error('footer tidak dirender');
+      });
+
+      /* ---- chart ---- */
+      await test('renderProgressChart menghasilkan SVG + fallback', () => {
+        const box = document.getElementById('test-chart-box');
+        const res = renderProgressChart(box, {
+          points: [
+            { date: '2026-08-01', value: 88 },
+            { date: '2026-08-08', value: 86.5 },
+            { date: '2026-08-15', value: 85 },
+          ],
+          color: '#0b7b6c', unit: 'kg', valueLabel: 'Berat badan',
+        });
+        if (!res.ok || res.count !== 3) throw new Error('chart gagal');
+        if (!box.querySelector('svg path')) throw new Error('tidak ada path');
+      });
+
+      /* ---- calculator UI end-to-end ---- */
+      await test('kalkulator: submit → hasil tampil', async () => {
+        resetState();
+        document.body.insertAdjacentHTML('beforeend', fixtureForm());
+        hydrateIcons();
+
+        initCalculator();
+        const form = document.getElementById('calculator-form');
+
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        // pilih pria dulu supaya neck tampil
+        const male = document.querySelector('#gender-seg .seg-option[data-value="male"]');
+        male?.click();
+        set('age', 32); set('weight', 88); set('height', 178); set('neck', 40); set('waist', 102); set('targetWeight', ''); set('activityLevel', 'moderate');
+
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        await sleep(300);
+
+        const content = document.getElementById('result-content');
+        if (!content || content.hidden) throw new Error('hasil tidak tampil');
+        if (content.querySelector('.big-bf-number')?.textContent.includes('NaN')) throw new Error('NaN di hasil');
+        if (!content.querySelector('.meal-card')) throw new Error('menu tidak dirender');
+
+        // simpan sebagai rencana
+        const saveBtn = content.querySelector('.js-action-save');
+        if (!saveBtn) throw new Error('tombol simpan hilang');
+        saveBtn.click();
+        await sleep(50);
+        if (!getPlan()) throw new Error('rencana tidak tersimpan');
+        if (getCurrentWeek() !== 1) throw new Error('minggu harus 1');
+
+        // hapus fixture
+        document.getElementById('calculator-form').remove();
+        document.getElementById('result-panel')?.remove();
+      });
+
+      await test('check-in state + toggle tanpa duplikat', async () => {
+        const week = getCurrentWeek();
+        const { scheduled } = completedCount(getPlan());
+        if (scheduled !== 6) throw new Error(`scheduled ${scheduled}`);
+
+        toggleWorkout(week, (getPlan().workouts.find((w) => w.type !== 'rest').day_of_week));
+        if (completedCount(getPlan()).done !== 1) throw new Error('toggle gagal');
+
+        addCheckin({ week, date: '2026-08-30', weight: 86.5, waist: 99, bodyFat: null, workoutsScheduled: scheduled, workoutsCompleted: 1, energy: 4, difficulty: 3, feedback: '', weightChange: -1.5, waistChange: -3 });
+        if (!hasCheckinForWeek(week)) throw new Error('check-in belum tersimpan');
+        incrementWeek();
+        if (getCurrentWeek() !== week + 1) throw new Error('minggu tidak maju');
+        resetState();
+      });
+    }
+
+    suite().then(() => {
+      const total = passed + failed;
+      document.getElementById('summary').textContent = `\nTotal: ${failed === 0 ? 'PASS' : 'FAIL'} — ${passed}/${total} lolos`;
+      if (failed > 0) {
+        document.getElementById('summary').classList.add('fail');
+        log(`\nGagal: ${failures.join(', ')}`, 'fail');
+      }
+    });
+
+    /* fixture form kalkulator minimal (ID sama dengan index.html) */
+    function fixtureForm() {
+      return `
+        <form id="calculator-form" novalidate>
+          <div id="gender-seg" class="segmented-control">
+            <button type="button" class="seg-option" data-value="male">Pria</button>
+            <button type="button" class="seg-option" data-value="female">Wanita</button>
+          </div>
+          <div class="input-group"><input id="age" name="age" type="number"></div>
+          <div class="input-group"><input id="weight" name="weight" type="number"></div>
+          <div class="input-group"><input id="height" name="height" type="number"></div>
+          <div class="input-group"><input id="neck" name="neck" type="number"></div>
+          <div class="input-group"><input id="waist" name="waist" type="number"></div>
+          <div class="input-group"><input id="targetWeight" name="targetWeight" type="number"></div>
+          <div class="input-group"><select id="activityLevel" name="activityLevel"><option value="sedentary">s</option><option value="light">l</option><option value="moderate">m</option><option value="active">a</option><option value="very_active">va</option></select></div>
+          <button type="submit">Hitung</button>
+        </form>
+        <div id="result-panel"><div id="result-empty"></div><div id="result-content" hidden></div></div>`;
+    }
+  </script>
+</body>
+</html>

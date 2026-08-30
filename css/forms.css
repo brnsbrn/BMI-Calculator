@@ -1,0 +1,302 @@
+/* ============================================================
+   forms.css — input, select, textarea, slider, validasi
+   ============================================================ */
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group + .input-group {
+  margin-top: 15px;
+}
+
+.input-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.input-label .required-mark {
+  color: var(--color-danger);
+}
+
+.input-label .label-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.form-control-wrap {
+  position: relative;
+}
+
+.form-control {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14.5px;
+  transition: border-color var(--duration) ease, box-shadow var(--duration) ease;
+}
+
+.form-control::placeholder {
+  color: var(--color-text-faint);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(8, 127, 115, 0.12);
+}
+
+.form-control.has-error {
+  border-color: var(--color-danger);
+}
+
+.form-control.has-error:focus {
+  box-shadow: 0 0 0 4px rgba(201, 55, 55, 0.12);
+}
+
+.form-control[readonly] {
+  background: #f6f8fa;
+  color: var(--color-text-muted);
+}
+
+.form-control-wrap.with-unit .form-control {
+  padding-right: 52px;
+}
+
+.unit-suffix {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 96px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.input-note,
+.field-error {
+  font-size: 12.5px;
+}
+
+.field-error {
+  color: var(--color-danger);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.input-note {
+  color: var(--color-text-muted);
+}
+
+.input-note.good {
+  color: var(--color-success-dark);
+}
+
+/* -------- Slider -------- */
+.range-wrap {
+  padding-top: 8px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.range-value {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: #e3e9f0;
+  outline-offset: 6px;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
+  cursor: grab;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
+  cursor: grab;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--color-primary) var(--range-progress, 50%),
+    #e3e9f0 var(--range-progress, 50%)
+  );
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: #e3e9f0;
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.range-labels .left,
+.range-labels .right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* -------- Form grid rows -------- */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+/* Di dalam grid, input-group tidak boleh punya margin tumpukan */
+.form-row > .input-group,
+.form-row > .input-group + .input-group {
+  margin-top: 0;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.notes-hint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* -------- Character counter -------- */
+.char-counter {
+  text-align: right;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+
+/* -------- Choice list (radio-like options) -------- */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--color-surface);
+  transition: border-color var(--duration) ease, background var(--duration) ease;
+}
+
+.choice-item:hover {
+  border-color: var(--color-primary);
+}
+
+.choice-item[aria-checked="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.choice-item .choice-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transition: border-color var(--duration) ease;
+}
+
+.choice-item[aria-checked="true"] .choice-radio {
+  border-color: var(--color-primary);
+}
+
+.choice-item[aria-checked="true"] .choice-radio::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}

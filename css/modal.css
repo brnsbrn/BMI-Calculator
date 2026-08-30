@@ -1,0 +1,145 @@
+/* ============================================================
+   modal.css — modal dialog, backdrop, mobile menu
+   ============================================================ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(16, 24, 40, 0.42);
+  backdrop-filter: blur(2px);
+  animation: fade-in 0.18s ease;
+}
+
+.modal {
+  position: fixed;
+  z-index: 130;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px));
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 24px;
+  animation: modal-in 0.22s var(--ease);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.modal-close {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background var(--duration) ease;
+}
+
+.modal-close:hover {
+  background: #f1f4f8;
+  color: var(--color-text);
+}
+
+.modal-body {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.modal-body ul {
+  margin: 12px 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.modal-body ul li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* Upload dropzone untuk import */
+.file-drop {
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  text-align: center;
+  cursor: pointer;
+  background: #fafbfd;
+  transition: border-color var(--duration) ease, background var(--duration) ease;
+}
+
+.file-drop:hover,
+.file-drop.dragover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.file-drop .fd-icon {
+  margin: 0 auto 8px;
+  color: var(--color-text-muted);
+}
+
+.import-preview {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  background: #fafbfd;
+}
+
+.import-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.import-preview th,
+.import-preview td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.import-preview th {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

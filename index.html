@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Kalkulator komposisi tubuh: body fat, BMI, BMR, TDEE, target berat, dan rekomendasi nutrisi serta latihan personal. Semua data diproses lokal di browser Anda.">
+  <title>BodyFit — Kalkulator Komposisi Tubuh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/calculator.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/plan.css">
+  <link rel="stylesheet" href="css/progress.css">
+  <link rel="stylesheet" href="css/check-in.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="calculator">
+  <a class="skip-link" href="#main-content">Langsung ke konten</a>
+  <header id="site-header"></header>
+
+  <div class="page">
+    <main id="main-content" class="page-main">
+      <div class="container">
+        <div class="page-header">
+          <h1>Kalkulator Komposisi Tubuh</h1>
+          <p class="subtitle">Hitung persentase lemak tubuh, kebutuhan kalori harian, target berat, dan dapatkan rekomendasi nutrisi serta latihan yang dipersonalisasi.</p>
+        </div>
+
+        <section class="calc-layout" aria-label="Kalkulator dan hasil">
+          <!-- ============ FORM ============ -->
+          <form id="calculator-form" class="card" novalidate aria-label="Form data tubuh">
+            <h2 class="card-title" style="margin-bottom:18px">Data Pengukuran</h2>
+
+            <div class="input-group">
+              <span class="input-label" id="gender-label">
+                <span>Jenis Kelamin <span class="required-mark" aria-hidden="true">*</span></span>
+              </span>
+              <div id="gender-seg" class="segmented-control" role="group" aria-labelledby="gender-label">
+                <button type="button" class="seg-option" data-value="male" aria-pressed="false" data-icon="user">Pria</button>
+                <button type="button" class="seg-option" data-value="female" aria-pressed="false" data-icon="users">Wanita</button>
+              </div>
+              <p class="field-error" id="gender-error" hidden></p>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="age">Umur <span class="label-hint">18–80 tahun</span></label>
+              <div class="form-control-wrap with-unit">
+                <input class="form-control" type="number" id="age" name="age" min="18" max="80" step="1" inputmode="numeric" placeholder="cth. 25" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">tahun</span>
+              </div>
+              <p class="field-error" id="age-error" hidden></p>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="weight">Berat Badan <span class="label-hint">30–300 kg</span></label>
+              <div class="form-control-wrap with-unit">
+                <input class="form-control" type="number" id="weight" name="weight" min="30" max="300" step="0.1" inputmode="decimal" placeholder="cth. 68" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">kg</span>
+              </div>
+              <p class="field-error" id="weight-error" hidden></p>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="height">Tinggi Badan <span class="label-hint">120–250 cm</span></label>
+              <div class="form-control-wrap with-unit">
+                <input class="form-control" type="number" id="height" name="height" min="120" max="250" step="0.1" inputmode="decimal" placeholder="cth. 170" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">cm</span>
+              </div>
+              <p class="field-error" id="height-error" hidden></p>
+            </div>
+
+            <div class="form-row">
+              <div class="input-group">
+                <label class="input-label" for="neck">Lingkar Leher <span class="label-hint">20–80 cm</span></label>
+                <div class="form-control-wrap with-unit">
+                  <input class="form-control" type="number" id="neck" name="neck" min="20" max="80" step="0.1" inputmode="decimal" placeholder="cth. 36" autocomplete="off">
+                  <span class="unit-suffix" aria-hidden="true">cm</span>
+                </div>
+                <p class="field-error" id="neck-error" hidden></p>
+              </div>
+              <div class="input-group">
+                <label class="input-label" for="waist">Lingkar Pinggang <span class="label-hint">40–200 cm</span></label>
+                <div class="form-control-wrap with-unit">
+                  <input class="form-control" type="number" id="waist" name="waist" min="40" max="200" step="0.1" inputmode="decimal" placeholder="cth. 80" autocomplete="off">
+                  <span class="unit-suffix" aria-hidden="true">cm</span>
+                </div>
+                <p class="field-error" id="waist-error" hidden></p>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="targetWeight">
+                Target Berat <span class="chip chip-neutral">opsional</span>
+              </label>
+              <div class="form-control-wrap with-unit">
+                <input class="form-control" type="number" id="targetWeight" name="targetWeight" min="30" max="300" step="0.1" inputmode="decimal" placeholder="cth. 70" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">kg</span>
+              </div>
+              <p class="input-note">Kosongkan jika ingin menghitung target otomatis berdasarkan lean body mass.</p>
+              <p class="field-error" id="targetWeight-error" hidden></p>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="activityLevel">Tingkat Aktivitas <span class="required-mark" aria-hidden="true">*</span></label>
+              <div class="form-control-wrap">
+                <select class="form-control form-select" id="activityLevel" name="activityLevel">
+                  <option value="sedentary">Jarang Berolahraga</option>
+                  <option value="light">Ringan (1–2x / minggu)</option>
+                  <option value="moderate" selected>Sedang (3–4x / minggu)</option>
+                  <option value="active">Aktif (5–6x / minggu)</option>
+                  <option value="very_active">Sangat Aktif (hampir setiap hari)</option>
+                </select>
+              </div>
+              <p class="field-error" id="activityLevel-error" hidden></p>
+            </div>
+
+            <div class="result-actions" style="margin-top:22px">
+              <button type="submit" id="btn-calculate" class="btn btn-primary btn-lg">
+                <span class="btn-default">Hitung Komposisi Tubuh</span>
+                <span class="btn-loading" hidden><span class="spinner" aria-hidden="true"></span> Menghitung…</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- ============ HASIL ============ -->
+          <div id="result-panel" aria-live="polite">
+            <div class="card empty-state" id="result-empty">
+              <div class="empty-icon" data-icon="calculator" aria-hidden="true"></div>
+              <h2>Belum ada hasil</h2>
+              <p>Isi data tubuh Anda lalu klik Hitung untuk melihat komposisi tubuh, kebutuhan kalori, target berat, dan rekomendasi personal Anda.</p>
+              <ul class="empty-features" role="list">
+                <li data-icon="shield-check">Data diproses tanpa disimpan ke server</li>
+                <li data-icon="clock">Kurang dari 1 menit</li>
+                <li data-icon="percent">Estimasi akurat</li>
+              </ul>
+            </div>
+            <div id="result-content" hidden></div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer id="site-footer"></footer>
+  </div>
+
+  <div id="modal-root"></div>
+  <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
+  <script type="module" src="js/app.js"></script>
+  <script>
+    (function () {
+      setTimeout(function () {
+        var header = document.getElementById('site-header');
+        if (header && !header.innerHTML.trim()) {
+          var bar = document.createElement('div');
+          bar.setAttribute('role', 'alert');
+          bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:10px 16px;font-size:13.5px;line-height:1.5;text-align:center';
+          bar.innerHTML = '<strong>Tidak bisa berjalan.</strong> Aplikasi ES module tidak berjalan lewat file://. Jalankan server lokal: <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">python -m http.server 8000</code> lalu buka <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">http://localhost:8000</code>.';
+          document.body.insertAdjacentElement('afterbegin', bar);
+        }
+      }, 1200);
+    })();
+  </script>
+</body>
+</html>

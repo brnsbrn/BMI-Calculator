@@ -1,0 +1,112 @@
+/* ============================================================
+   responsive.css — breakpoints mobile/tablet/desktop
+   ============================================================ */
+
+/* Tablet (< 1024px) */
+@media (max-width: 1024px) {
+  .calc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile (< 640px) */
+@media (max-width: 640px) {
+  :root {
+    --header-height: 62px;
+  }
+
+  .page-main {
+    padding: 20px 0 40px;
+  }
+
+  .nav-desktop {
+    display: none;
+  }
+
+  .header-actions .reset-nav {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .nutrition-tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .meals-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .checkin-card .checkin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .week-strip {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .big-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-pill-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .modal {
+    padding: 20px;
+  }
+}
+
+/* Tablet khusus (640–1024) */
+@media (max-width: 768px) {
+  .chart-box {
+    height: 240px;
+  }
+}
+
+/* Desktop kecil (1024–1200) */
+@media (min-width: 1025px) and (max-width: 1200px) {
+  .calc-layout {
+    grid-template-columns: 340px 1fr;
+  }
+}

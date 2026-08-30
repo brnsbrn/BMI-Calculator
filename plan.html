@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rencana personal nutrisi dan latihan Anda: target body fat, berat, jadwal latihan mingguan, dan contoh menu harian.">
+  <title>BodyFit — Rencana Saya</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/calculator.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/plan.css">
+  <link rel="stylesheet" href="css/progress.css">
+  <link rel="stylesheet" href="css/check-in.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="plan">
+  <a class="skip-link" href="#main-content">Langsung ke konten</a>
+  <header id="site-header"></header>
+
+  <div class="page">
+    <main id="main-content" class="page-main">
+      <div class="container">
+        <div id="plan-page"></div>
+      </div>
+    </main>
+
+    <footer id="site-footer"></footer>
+  </div>
+
+  <div id="modal-root"></div>
+  <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
+  <script type="module" src="js/app.js"></script>
+  <script>
+    (function () {
+      setTimeout(function () {
+        var header = document.getElementById('site-header');
+        if (header && !header.innerHTML.trim()) {
+          var bar = document.createElement('div');
+          bar.setAttribute('role', 'alert');
+          bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:10px 16px;font-size:13.5px;line-height:1.5;text-align:center';
+          bar.innerHTML = '<strong>Tidak bisa berjalan.</strong> Aplikasi ES module tidak berjalan lewat file://. Jalankan server lokal: <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">python -m http.server 8000</code> lalu buka <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">http://localhost:8000</code>.';
+          document.body.insertAdjacentElement('afterbegin', bar);
+        }
+      }, 1200);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "bodyfit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BodyFit — Body Composition & Fitness Planner (pure HTML/CSS/JS, localStorage)",
+  "scripts": {
+    "test": "node node-test.mjs"
+  }
+}
