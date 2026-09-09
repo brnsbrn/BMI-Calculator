@@ -54,12 +54,6 @@ export function validateCalculatorForm(values) {
     v.targetWeightManual = false;
   }
 
-  // activity level
-  const activities = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
-  if (!activities.includes(v.activityLevel)) {
-    errors.activityLevel = 'Pilih tingkat aktivitas.';
-  }
-
   return { ok: Object.keys(errors).length === 0, errors, values: v };
 }
 
