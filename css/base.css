@@ -24,6 +24,7 @@ html {
 }
 
 body {
+  position: relative;
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.55;
@@ -32,6 +33,26 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: var(--header-height) 0 0 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("../assets/images/kaltim-logo.svg");
+  background-repeat: no-repeat;
+  background-position: right clamp(-96px, -7vw, -42px) bottom clamp(-118px, -9vw, -54px);
+  background-size: clamp(260px, 46vw, 640px) auto;
+  opacity: 0.055;
+}
+
+.skip-link,
+.page {
+  position: relative;
+  z-index: 1;
 }
 
 h1,

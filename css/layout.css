@@ -43,7 +43,8 @@
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
   color: var(--color-text);
 }
 
@@ -52,31 +53,38 @@
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  background: var(--color-primary);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-card);
+  width: 44px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(16, 24, 40, 0.12));
 }
 
 .brand-name {
+  display: block;
+  min-width: 0;
+  max-width: 360px;
   font-family: var(--font-heading);
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+  line-height: 1.15;
 }
 
 .brand-name small {
   display: block;
-  font-size: 10.5px;
+  margin-top: 2px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  line-height: 1;
+  letter-spacing: 0;
+  color: var(--color-primary-dark);
+  line-height: 1.2;
 }
 
 .nav-desktop {

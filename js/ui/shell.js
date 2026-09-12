@@ -48,12 +48,15 @@ function navLinks(containerClass) {
 function renderHeader() {
   const header = document.getElementById('site-header');
   if (!header) return;
+  header.className = 'app-header';
   header.innerHTML = `
     <div class="container">
       <div class="header-inner">
-        <a class="brand" href="index.html" aria-label="BodyFit — beranda kalkulator">
-          <span class="brand-logo">${icon('heart', { size: 20 })}</span>
-          <span class="brand-name">BodyFit<small>Fitness Planner</small></span>
+        <a class="brand" href="index.html" aria-label="Dinas Kesehatan Provinsi Kalimantan Timur — beranda BodyFit">
+          <span class="brand-logo">
+            <img src="assets/images/kaltim-logo.svg" alt="" width="44" height="54">
+          </span>
+          <span class="brand-name">Dinas Kesehatan<small>Provinsi Kalimantan Timur</small></span>
         </a>
         <nav class="nav-desktop" aria-label="Navigasi utama">${navLinks()}</nav>
         <button class="menu-toggle" id="menu-toggle" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="mobile-menu">
@@ -77,6 +80,7 @@ function renderHeader() {
 function renderFooter() {
   const footer = document.getElementById('site-footer');
   if (!footer) return;
+  footer.className = 'app-footer';
   footer.innerHTML = `
     <div class="container footer-inner">
       <div class="footer-meta">
