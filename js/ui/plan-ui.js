@@ -117,7 +117,7 @@ function renderPage(plan) {
             <div class="pa-row"><span>Belum ada pengukuran tersimpan.</span></div>`}
         </div>
 
-        <section class="card" style="background:#f6f8fa">
+        <section class="card" style="background:linear-gradient(180deg,#F7FBFA 0%,#F2F7F8 100%)">
           <h2 class="card-title">Check-in nominal</h2>
           <p style="color:var(--color-text-muted);font-size:13.5px">Catat berat, lingkar pinggang, energi, dan tingkat kesulitan latihan setiap akhir minggu untuk memantau progres.</p>
           <a class="btn btn-primary" href="check-in.html" style="margin-top:12px">${icon('calendar', { size: 17 })} Lakukan Check-in</a>

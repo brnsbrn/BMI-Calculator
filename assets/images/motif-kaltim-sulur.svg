@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" width="360" height="240" fill="none" aria-hidden="true">
+  <!-- Ornamen dekoratif orisinal: stilisasi sulur dan pakis, terinspirasi ragam hias Kalimantan Timur.
+       Bukan salinan motif Batik Shaho atau simbol adat tertentu. -->
+  <g stroke="#0B7D73" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-20 204C28 193 49 151 77 130C102 112 143 114 155 145C169 181 138 209 112 192C94 180 104 155 120 155C130 155 136 160 137 169"/>
+    <path d="M79 132C63 96 82 59 114 46C144 34 168 46 178 65C193 92 177 118 159 118C143 118 137 104 146 95C152 90 160 92 163 98"/>
+    <path d="M154 143C181 123 214 110 246 118C283 126 296 163 278 181C261 197 238 191 238 175C238 165 248 157 258 162"/>
+    <path d="M178 65C200 40 231 35 255 50C273 61 279 85 267 101"/>
+  </g>
+  <g fill="#0B7D73">
+    <path d="M67 154C50 139 37 121 43 106C63 111 73 130 67 154Z"/>
+    <path d="M84 121C86 93 102 75 122 75C116 97 106 113 84 121Z"/>
+    <path d="M110 46C104 25 113 11 133 6C137 26 126 39 110 46Z"/>
+    <path d="M178 66C190 55 207 56 220 69C208 83 190 81 178 66Z"/>
+    <path d="M201 122C210 96 232 87 249 94C239 115 221 125 201 122Z"/>
+    <path d="M298 172C311 149 331 141 349 147C341 165 324 176 298 172Z"/>
+    <path d="M30 186C14 165 2 164-13 167C-7 186 11 196 30 186Z"/>
+  </g>
+  <g stroke="#B8841F" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M245 23C259 9 277 7 291 19C308 35 299 54 286 53C277 52 276 39 285 37"/>
+    <path d="M285 191C307 212 335 213 365 198"/>
+    <path d="M32 43C44 31 49 16 41-1"/>
+  </g>
+  <g fill="#B8841F">
+    <path d="M255 22C249 7 252-4 266-12C273 2 268 15 255 22Z"/>
+    <path d="M310 206C321 194 339 188 350 198C342 213 324 219 310 206Z"/>
+    <circle cx="204" cy="73" r="3.5"/>
+    <circle cx="213" cy="85" r="2.5"/>
+    <circle cx="193" cy="84" r="2.5"/>
+  </g>
+</svg>

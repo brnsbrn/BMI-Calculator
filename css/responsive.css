@@ -31,7 +31,7 @@
 /* Mobile (< 640px) */
 @media (max-width: 640px) {
   :root {
-    --header-height: 62px;
+    --header-height: 68px;
   }
 
   .page-main {
@@ -39,12 +39,18 @@
   }
 
   .brand {
-    gap: 10px;
+    gap: 11px;
   }
 
   .brand-logo {
-    width: 36px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
+    padding: 5px;
+    border-radius: 13px;
+  }
+
+  .brand-badge {
+    display: none;
   }
 
   .brand-name {
@@ -52,12 +58,44 @@
     font-size: 13.5px;
   }
 
-  .brand-name small {
+  .brand-subtitle {
     font-size: 11px;
   }
 
   .header-actions .reset-nav {
     display: none;
+  }
+
+  .page-header {
+    padding: 22px 18px;
+    border-radius: 18px;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-header::after {
+    width: 210px;
+    right: -68px;
+    top: 0;
+    opacity: 0.1;
+    background-size: 190px auto;
+  }
+
+  body::before,
+  body::after {
+    display: none;
+  }
+
+  .runtime-notice {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .runtime-steps {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .metric-grid {
@@ -98,6 +136,10 @@
 
   .big-summary {
     grid-template-columns: 1fr;
+  }
+
+  .big-bf-number {
+    font-size: 3rem;
   }
 
   .stat-pill-list {

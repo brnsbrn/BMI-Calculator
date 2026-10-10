@@ -4,11 +4,28 @@
 
 /* -------- Card -------- */
 .card {
-  background: var(--color-surface);
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(249, 251, 252, 0.98) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 22px;
   box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(11, 125, 115, 0.8), rgba(184, 132, 31, 0.42), transparent 70%);
+  opacity: 0.82;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .card + .card {
@@ -37,7 +54,7 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
+  background: linear-gradient(180deg, var(--color-primary-soft), #eef9f7);
   color: var(--color-primary-dark);
   display: grid;
   place-items: center;
@@ -63,10 +80,11 @@
 }
 
 .metric-card {
-  background: var(--color-surface);
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   padding: 16px 18px;
+  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.035);
 }
 
 .metric-card .metric-label {
@@ -82,9 +100,10 @@
 .metric-card .metric-value {
   font-size: 26px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
+  color: var(--color-text);
 }
 
 .metric-card .metric-value small {
@@ -134,15 +153,15 @@
 }
 
 .badge.badge-neutral {
-  background: #eef1f6;
+  background: #eef3f6;
   color: var(--color-text-muted);
   border-color: var(--color-border);
 }
 
 .badge.badge-brand {
-  background: var(--color-primary-soft);
+  background: linear-gradient(90deg, var(--color-primary-soft), rgba(247, 235, 207, 0.82));
   color: var(--color-primary-dark);
-  border-color: #c2e6df;
+  border-color: #b9ded7;
 }
 
 .badge.badge-success {
@@ -231,7 +250,7 @@
 .btn-primary {
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 1px 4px rgba(8, 127, 115, 0.28);
+  box-shadow: 0 8px 18px rgba(11, 125, 115, 0.22);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -312,7 +331,7 @@
 }
 
 .spinner.spinner-dark {
-  border-color: rgba(8, 127, 115, 0.25);
+  border-color: rgba(11, 125, 115, 0.25);
   border-top-color: var(--color-primary);
 }
 
@@ -395,14 +414,14 @@
   padding: 52px 24px;
   border: 1.5px dashed var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .empty-state .empty-icon {
   width: 58px;
   height: 58px;
   border-radius: var(--radius-lg);
-  background: #eef1f6;
+  background: var(--color-primary-soft);
   color: var(--color-text-faint);
   display: grid;
   place-items: center;
@@ -442,7 +461,7 @@
   width: 100%;
   height: 8px;
   border-radius: var(--radius-full);
-  background: #eef1f6;
+  background: #e8eef3;
   overflow: hidden;
 }
 
@@ -458,7 +477,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2px;
-  background: #eef1f6;
+  background: #e8eef3;
   border-radius: var(--radius-md);
   padding: 4px;
 }
@@ -487,7 +506,7 @@
   background: var(--color-surface);
   border-color: var(--color-border-strong);
   color: var(--color-primary-dark);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 4px 10px rgba(16, 24, 40, 0.08);
 }
 
 /* -------- Recipe / meal list -------- */
@@ -504,7 +523,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 14px 18px;
-  background: #fafbfd;
+  background: var(--color-surface-soft);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -572,7 +591,7 @@
 
 .workout-item.is-today {
   border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: linear-gradient(180deg, var(--color-primary-soft), #f4fbf9);
 }
 
 .workout-item.is-done {
@@ -675,7 +694,7 @@
 }
 
 .checkin-card .checkin-stat {
-  background: #fafbfd;
+  background: var(--color-surface-soft);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
@@ -744,7 +763,7 @@
 .macro-bar {
   height: 8px;
   border-radius: var(--radius-full);
-  background: #eef1f6;
+  background: #e8eef3;
   overflow: hidden;
 }
 

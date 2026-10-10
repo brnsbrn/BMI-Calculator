@@ -29,7 +29,10 @@ body {
   font-size: 15px;
   line-height: 1.55;
   color: var(--color-text);
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(11, 125, 115, 0.095), transparent 32vw),
+    radial-gradient(circle at 88% 12%, rgba(184, 132, 31, 0.075), transparent 30vw),
+    linear-gradient(180deg, #fbfefd 0%, var(--color-bg) 340px, var(--color-bg) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -39,13 +42,25 @@ body {
 body::before {
   content: "";
   position: fixed;
-  inset: var(--header-height) 0 0 0;
+  inset: var(--header-height) 0 0 auto;
+  width: min(34vw, 520px);
   z-index: 0;
   pointer-events: none;
-  background-image: url("../assets/images/kaltim-logo.svg");
-  background-repeat: no-repeat;
-  background-position: right clamp(-96px, -7vw, -42px) bottom clamp(-118px, -9vw, -54px);
-  background-size: clamp(260px, 46vw, 640px) auto;
+  background: url("../assets/images/motif-kaltim-sulur.svg")
+    no-repeat right -110px top 72px / 470px auto;
+  opacity: 0.075;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: auto auto -18px -120px;
+  width: 410px;
+  height: 275px;
+  z-index: 0;
+  pointer-events: none;
+  background: url("../assets/images/motif-kaltim-sulur.svg") no-repeat center / contain;
+  transform: rotate(180deg);
   opacity: 0.055;
 }
 
@@ -62,11 +77,11 @@ h4 {
   font-family: var(--font-heading);
   line-height: 1.2;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 h1 {
-  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  font-size: 1.9rem;
 }
 
 h2 {
@@ -160,7 +175,7 @@ input[type="number"] {
 
 /* Fokus terlihat */
 :focus-visible {
-  outline: 3px solid rgba(8, 127, 115, 0.35);
+  outline: 3px solid rgba(11, 125, 115, 0.35);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -188,10 +203,10 @@ input[type="number"] {
 
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(8, 127, 115, 0.35);
+    box-shadow: 0 0 0 0 rgba(11, 125, 115, 0.35);
   }
   100% {
-    box-shadow: 0 0 0 10px rgba(8, 127, 115, 0);
+    box-shadow: 0 0 0 10px rgba(11, 125, 115, 0);
   }
 }
 

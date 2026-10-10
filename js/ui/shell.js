@@ -53,10 +53,16 @@ function renderHeader() {
     <div class="container">
       <div class="header-inner">
         <a class="brand" href="index.html" aria-label="Dinas Kesehatan Provinsi Kalimantan Timur — beranda BodyFit">
-          <span class="brand-logo">
-            <img src="assets/images/kaltim-logo.svg" alt="" width="44" height="54">
+          <span class="brand-logo-wrap">
+            <span class="brand-logo">
+              <img src="assets/images/kaltim-logo.svg" alt="Logo Provinsi Kalimantan Timur" width="46" height="46">
+            </span>
           </span>
-          <span class="brand-name">Dinas Kesehatan<small>Provinsi Kalimantan Timur</small></span>
+          <span class="brand-copy">
+            <span class="brand-badge">BodyFit Kaltim</span>
+            <span class="brand-name">Dinas Kesehatan</span>
+            <small class="brand-subtitle">Provinsi Kalimantan Timur</small>
+          </span>
         </a>
         <nav class="nav-desktop" aria-label="Navigasi utama">${navLinks()}</nav>
         <button class="menu-toggle" id="menu-toggle" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="mobile-menu">

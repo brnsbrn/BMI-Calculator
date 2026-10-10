@@ -1,29 +1,32 @@
 :root {
   /* Warna dasar */
-  --color-bg: #f7f9fb;
+  --color-bg: #f3f7fa;
   --color-surface: #ffffff;
-  --color-border: #e5eaf0;
-  --color-border-strong: #cfd9e4;
+  --color-surface-soft: #f9fbfc;
+  --color-border: #d8e1e8;
+  --color-border-strong: #c1ced8;
 
   /* Teks */
-  --color-text: #17212b;
-  --color-text-muted: #667085;
+  --color-text: #18212a;
+  --color-text-muted: #617084;
   --color-text-faint: #98a2b3;
 
   /* Brand (teal) */
-  --color-primary: #087f73;
-  --color-primary-dark: #05665c;
+  --color-primary: #0b7d73;
+  --color-primary-dark: #075d56;
   --color-primary-darker: #04534b;
-  --color-primary-soft: #e8f7f4;
-  --color-primary-soft-strong: #d4efea;
+  --color-primary-soft: #ddf3ef;
+  --color-primary-soft-strong: #c9ebe5;
+  --color-gold: #b8841f;
+  --color-gold-soft: #f7ebcf;
 
   /* Status */
   --color-success: #16855b;
   --color-success-dark: #0f6a47;
   --color-success-soft: #e9f7f0;
-  --color-warning: #b57307;
-  --color-warning-dark: #8f5b06;
-  --color-warning-soft: #fdf4df;
+  --color-warning: #b8841f;
+  --color-warning-dark: #8a6217;
+  --color-warning-soft: #f7ebcf;
   --color-danger: #c93737;
   --color-danger-dark: #a52c2c;
   --color-danger-soft: #fdf0f0;
@@ -40,11 +43,11 @@
   /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 18px;
   --radius-full: 999px;
 
   /* Shadow */
-  --shadow-card: 0 2px 12px rgba(16, 24, 40, 0.05);
+  --shadow-card: 0 10px 24px rgba(16, 24, 40, 0.045);
   --shadow-raised: 0 8px 24px rgba(16, 24, 40, 0.08);
   --shadow-modal: 0 24px 60px rgba(16, 24, 40, 0.22);
 
@@ -55,7 +58,7 @@
     "Segoe UI", Roboto, sans-serif;
 
   /* Ukuran */
-  --header-height: 72px;
+  --header-height: 82px;
   --container-max: 1240px;
 
   /* Transisi */
