@@ -64,6 +64,8 @@
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   background: var(--color-bg);
   color: var(--color-text);
@@ -117,26 +119,49 @@ h4 {
 }
 
 .footer-landscape {
-  height: 84px;
+  position: relative;
+  height: 120px;
   overflow: hidden;
   pointer-events: none;
 }
 
 .footer-landscape img {
+  position: absolute;
+  left: 0;
+  top: -73%;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 60%;
-  opacity: 0.62;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.25), #000 55%);
+  height: 213%;
+  opacity: 0.9;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), #000 35%);
 }
 
 .app-footer .footer-inner {
-  padding: 4px 24px;
-  min-height: 36px;
+  position: absolute;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: none;
+  padding: 10px 24px;
+  min-height: 52px;
   background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
+  border-top: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.app-footer .footer-data-actions button {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.app-footer .footer-meta,
+.app-footer .footer-data-actions {
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  box-shadow: 0 0 12px 8px color-mix(in srgb, var(--color-bg) 82%, transparent);
+}
+
+.app-footer .footer-data-actions button:hover {
+  color: var(--color-primary-dark);
 }
 
 .footer-data-actions {
@@ -208,7 +233,7 @@ h4 {
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
-  min-height: 560px;
+  min-height: 760px;
   padding: 20px 20px 24px;
 }
 
@@ -227,10 +252,11 @@ h4 {
 }
 
 .sidebar-art-left {
-  left: -20%;
-  top: max(38%, 340px);
-  width: 110%;
-  height: 52%;
+  left: -8%;
+  top: max(34%, 318px);
+  bottom: 22%;
+  width: 115%;
+  height: calc(78% - max(34%, 318px));
   object-position: left top;
   opacity: 0.64;
 }
@@ -239,7 +265,7 @@ h4 {
   right: -47%;
   top: 31%;
   width: 105%;
-  height: 50%;
+  height: 47%;
   object-position: left center;
   opacity: 0.4;
   mix-blend-mode: screen;
@@ -249,16 +275,17 @@ h4 {
   left: -12.5%;
   bottom: -16px;
   width: 125%;
-  height: 170px;
+  height: 20%;
   object-position: center bottom;
   opacity: 0.34;
 }
 
 .sidebar-art-corner {
   right: -8px;
-  bottom: 4%;
+  bottom: 0;
   width: 70%;
-  height: auto;
+  height: 20%;
+  object-position: right bottom;
   opacity: 0.24;
 }
 
@@ -351,15 +378,19 @@ h4 {
 }
 
 .sidebar-motto {
-  width: calc(var(--sidebar-width) * 0.72);
-  max-width: calc(100% - 22px);
-  margin: auto 0 32px 22px;
-  padding-top: 32px;
+  position: absolute;
+  left: 15%;
+  bottom: 10%;
+  width: 70%;
+  height: 14%;
+  margin: 0;
+  padding: 0;
 }
 
 .sidebar-motto img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   filter: drop-shadow(0 2px 3px #082d25);
 }
 
@@ -447,6 +478,8 @@ body[data-page="calculator"] .hero-kaltim::after {
   z-index: 5;
   min-width: 0;
   max-width: 520px;
+  background: var(--hero-bg);
+  box-shadow: 0 0 18px 12px var(--hero-bg);
 }
 
 .hero-kaltim h1 {
@@ -478,48 +511,57 @@ body[data-page="calculator"] .hero-kaltim::after {
 }
 
 .hero-orangutan {
-  left: -16px;
-  top: -28px;
-  width: 240px;
+  left: -18px;
+  top: -56px;
+  width: 250px;
   z-index: 4;
-  filter: drop-shadow(0 12px 16px rgba(84, 49, 26, 0.16));
+  filter: none;
 }
 
 .hero-landscape {
-  right: 0;
-  bottom: -7px;
-  width: min(54%, calc(100% - 740px));
-  opacity: 1;
+  --hero-scene-width: min(calc((100vw - var(--sidebar-width)) * 0.66), 1000px);
+  right: 80px;
+  bottom: calc(var(--hero-scene-width) * -0.16);
+  width: var(--hero-scene-width);
+  opacity: 0.88;
   filter: none;
+  mask-image: linear-gradient(90deg, transparent, #000 26%);
   z-index: 1;
 }
 
 .hero-enggang {
-  right: 100px;
-  bottom: -20px;
-  width: 190px;
+  right: 190px;
+  bottom: -80px;
+  width: 210px;
   z-index: 4;
-  filter: drop-shadow(0 12px 18px rgba(37, 43, 31, 0.2));
+  filter: none;
 }
 
 .hero-ornament {
-  right: -45px;
-  top: 72px;
-  width: 246px;
+  right: -14px;
+  top: 10px;
+  width: 270px;
   z-index: 3;
 }
 
 .hero-script {
   position: relative;
   z-index: 5;
-  color: var(--color-text);
-  font-family: var(--font-script);
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 0.9;
-  text-align: center;
-  transform: rotate(-5deg);
-  text-shadow: 0 1px 6px var(--hero-bg), 0 0 12px var(--hero-bg);
+  display: grid;
+  place-items: center;
+  height: 140px;
+  transform: none;
+}
+
+.hero-script img {
+  width: 132px;
+  height: 160px;
+  object-fit: contain;
+  transform: translate(-10px, -24px);
+}
+
+:root[data-theme="dark"] .hero-script img {
+  filter: brightness(0) invert(1);
 }
 
 /* -------- Cards and calculator grid -------- */
@@ -1293,16 +1335,29 @@ body:not([data-page="calculator"]) .page-main > .container {
   }
 
   .hero-landscape {
-    width: calc(100% - 630px);
+    right: 0;
+    mask-image: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.55) 32%, #000 45%);
   }
 
   .hero-enggang {
-    right: 20px;
-    width: 150px;
+    right: 130px;
+    bottom: -70px;
+    width: 180px;
   }
 
   .hero-script {
-    display: none;
+    display: grid;
+    position: absolute;
+    left: 620px;
+    top: 78px;
+    width: 110px;
+    height: 130px;
+  }
+
+  .hero-script img {
+    width: 110px;
+    height: 148px;
+    transform: translateY(-12px);
   }
 
   .big-summary {
@@ -1398,7 +1453,7 @@ body:not([data-page="calculator"]) .page-main > .container {
   }
 
   .sidebar-motto {
-    margin-left: 16px;
+    margin-left: 0;
   }
 
   .hero-kaltim h1 {
@@ -1433,8 +1488,8 @@ body:not([data-page="calculator"]) .page-main > .container {
 
   .hero-orangutan {
     top: auto;
-    bottom: -16px;
-    width: 150px;
+    bottom: -96px;
+    width: 170px;
   }
 
   .hero-script {
@@ -1442,16 +1497,18 @@ body:not([data-page="calculator"]) .page-main > .container {
   }
 
   .hero-landscape {
-    width: max(100%, 560px);
-    height: 210px;
-    object-fit: contain;
-    object-position: center bottom;
+    --hero-scene-width: min(calc(100vw - var(--sidebar-width)), 760px);
+    right: 0;
+    width: var(--hero-scene-width);
+    height: auto;
+    bottom: calc(var(--hero-scene-width) * -0.1);
+    mask-image: none;
   }
 
   .hero-enggang {
     right: 8px;
-    bottom: -12px;
-    width: 140px;
+    bottom: -88px;
+    width: 150px;
   }
 }
 
@@ -1498,7 +1555,8 @@ body:not([data-page="calculator"]) .page-main > .container {
   }
 
   .page {
-    min-height: calc(100svh - var(--header-height));
+    flex: 1;
+    min-height: 0;
   }
 
   .app-header .brand,
@@ -1582,21 +1640,22 @@ body:not([data-page="calculator"]) .page-main > .container {
   .hero-orangutan {
     left: -30px;
     top: auto;
-    bottom: -16px;
-    width: 150px;
+    bottom: -90px;
+    width: 170px;
     display: block;
   }
 
   .hero-landscape {
+    --hero-scene-width: min(max(100vw, 560px), 760px);
     right: 0;
-    bottom: -7px;
-    width: max(100%, 560px);
+    bottom: calc(var(--hero-scene-width) * -0.1);
+    width: var(--hero-scene-width);
   }
 
   .hero-enggang {
     right: 10px;
-    bottom: 8px;
-    width: 120px;
+    bottom: -65px;
+    width: 155px;
   }
 
   .hero-ornament {
@@ -1792,10 +1851,6 @@ body:not([data-page="calculator"]) .page-main > .container {
     order: 3;
     width: 100%;
     justify-content: flex-end;
-  }
-
-  .page {
-    min-height: calc(100svh - 112px);
   }
 
   .metric-grid,

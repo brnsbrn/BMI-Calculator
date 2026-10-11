@@ -2,7 +2,7 @@
  * app.js — entry point. Bootstrap shell + router per halaman.
  */
 
-import { initShell } from './ui/shell.js?v=kaltim-sidebar-5';
+import { initShell } from './ui/shell.js?v=kaltim-header-6';
 import { hydrateIcons } from './ui/icons.js?v=kaltim-assets-4';
 import { closeModal } from './ui/modal.js';
 

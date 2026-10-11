@@ -126,6 +126,9 @@ function renderFooter() {
   if (!footer) return;
   footer.className = 'app-footer';
   footer.innerHTML = `
+    <div class="footer-landscape" aria-hidden="true">
+      <img src="assets/images/kaltim/mockup/footer-landscape-strip.png" alt="" loading="lazy">
+    </div>
     <div class="container footer-inner">
       <div class="footer-meta">
         <span>© 2026 BodyFit</span>
@@ -135,9 +138,6 @@ function renderFooter() {
         <button id="btn-import">${icon('upload', { size: 15 })} Impor</button>
         <button id="btn-reset">${icon('refresh-cw', { size: 15 })} Reset</button>
       </div>
-    </div>
-    <div class="footer-landscape" aria-hidden="true">
-      <img src="assets/images/kaltim/mockup/footer-landscape-strip.png" alt="" loading="lazy">
     </div>`;
 }
 
