@@ -29,7 +29,7 @@ export function validateCalculatorForm(values) {
 
   const needsNeck = v.gender === 'male';
 
-  const numberFields = ['age', 'weight', 'height', 'neck', 'waist'];
+  const numberFields = ['age', 'weight', 'height'];
   for (const field of numberFields) {
     const msg = validateNumber(v[field], field);
     if (msg) {
@@ -38,9 +38,24 @@ export function validateCalculatorForm(values) {
     v[field] = parseNum(v[field]);
   }
 
+  const waistValue = parseNum(v.waist);
+  const neckValue = parseNum(v.neck);
+
+  if (waistValue !== null) {
+    const waistMsg = validateNumber(v.waist, 'waist');
+    if (waistMsg) errors.waist = waistMsg;
+  }
+  v.waist = waistValue;
+
+  if (needsNeck && neckValue !== null) {
+    const neckMsg = validateNumber(v.neck, 'neck');
+    if (neckMsg) errors.neck = neckMsg;
+  }
+  v.neck = neckValue;
+
   // relasi waist > neck (khusus male)
   if (needsNeck && !errors.waist && !errors.neck && v.waist !== null && v.neck !== null && v.waist <= v.neck) {
-    errors.waist = 'Lingkar pinggang harus lebih besar dari lingkar leher.';
+    errors.waist = 'Lingkar pinggang harus lebih besar dari lingkar lengan atas.';
   }
 
   // target berat opsional
@@ -132,7 +147,7 @@ const LABELS = {
   age: 'Umur',
   weight: 'Berat badan',
   height: 'Tinggi badan',
-  neck: 'Lingkar leher',
+  neck: 'Lingkar lengan atas',
   waist: 'Lingkar pinggang',
 };
 

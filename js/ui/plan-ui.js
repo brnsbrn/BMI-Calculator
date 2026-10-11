@@ -44,7 +44,7 @@ function renderPage(plan) {
     <div class="page-header-row">
       <div class="page-header" style="margin-bottom:0">
         <h1>Rencana Saya</h1>
-        <p class="subtitle">Target nutrisi, contoh menu, dan jadwal latihan untuk minggu ini. Dicentang otomatis tersimpan di perangkat Anda.</p>
+        <p class="subtitle">Target nutrisi, contoh menu, dan jadwal latihan untuk minggu ini.</p>
       </div>
       <div class="page-header-actions">
         <a class="btn btn-secondary" href="index.html">${icon('calculator', { size: 17 })} Hitung Ulang</a>

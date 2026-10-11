@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Kalkulator komposisi tubuh: body fat, BMI, BMR, TDEE, target berat, dan rekomendasi nutrisi serta latihan personal. Semua data diproses lokal di browser Anda.">
+  <meta name="description" content="Kalkulator komposisi tubuh BodyFit Kaltim untuk menghitung body fat, BMI, BMR, TDEE, target berat, dan rekomendasi nutrisi serta latihan personal.">
   <title>BodyFit — Kalkulator Komposisi Tubuh</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Caveat:wght@600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/progress.css">
   <link rel="stylesheet" href="css/check-in.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/kaltim-theme.css?v=kaltim-sidebar-5">
 </head>
 <body data-page="calculator">
   <a class="skip-link" href="#main-content">Langsung ke konten</a>
@@ -28,16 +29,28 @@
   <div class="page">
     <main id="main-content" class="page-main">
       <div class="container">
-        <div class="page-header">
-          <span class="page-eyebrow">Body Composition • Kaltim</span>
-          <h1>Kalkulator Komposisi Tubuh</h1>
-          <p class="subtitle">Hitung persentase lemak tubuh, kebutuhan kalori harian, target berat, dan dapatkan rekomendasi nutrisi serta latihan yang dipersonalisasi.</p>
+        <div class="page-header hero-kaltim">
+          <img class="hero-orangutan" src="assets/images/kaltim/mockup/orangutan-hero.png" alt="" aria-hidden="true">
+          <div class="hero-copy">
+            <h1>Kalkulator Komposisi Tubuh</h1>
+            <p class="subtitle">Hitung persentase lemak tubuh, indeks massa tubuh, serta data komposisi tubuh Anda dengan mudah dan akurat untuk hidup lebih sehat.</p>
+          </div>
+          <p class="hero-script" aria-hidden="true">Sehat<br>Bersama<br>Kaltim</p>
+          <img class="hero-landscape" src="assets/images/kaltim/mockup/hero-landscape-bridge.png" alt="" aria-hidden="true">
+          <img class="hero-enggang" src="assets/images/kaltim/mockup/hornbill-hero.png" alt="" aria-hidden="true">
+          <img class="hero-ornament" src="assets/images/kaltim/mockup/ornament-corner-right-color.png" alt="" aria-hidden="true">
         </div>
 
         <section class="calc-layout" aria-label="Kalkulator dan hasil">
           <!-- ============ FORM ============ -->
-          <form id="calculator-form" class="card" novalidate aria-label="Form data tubuh">
-            <h2 class="card-title" style="margin-bottom:18px">Data Pengukuran</h2>
+          <form id="calculator-form" class="card measurement-card" novalidate aria-label="Form data tubuh">
+            <div class="measurement-heading">
+              <span class="measurement-icon" data-icon="scale" aria-hidden="true"></span>
+              <div>
+                <h2 class="card-title">Data Pengukuran</h2>
+                <p>Masukkan data diri Anda untuk melihat hasil perhitungan.</p>
+              </div>
+            </div>
 
             <div class="input-group">
               <span class="input-label" id="gender-label">
@@ -51,27 +64,27 @@
             </div>
 
             <div class="input-group">
-              <label class="input-label" for="age">Umur <span class="label-hint">18–80 tahun</span></label>
+              <label class="input-label" for="age">Umur</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="age" name="age" min="18" max="80" step="1" inputmode="numeric" placeholder="cth. 25" autocomplete="off">
-                <span class="unit-suffix" aria-hidden="true">tahun</span>
+                <input class="form-control" type="number" id="age" name="age" min="18" max="80" step="1" inputmode="numeric" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">Tahun</span>
               </div>
               <p class="field-error" id="age-error" hidden></p>
             </div>
 
             <div class="input-group">
-              <label class="input-label" for="weight">Berat Badan <span class="label-hint">30–300 kg</span></label>
+              <label class="input-label" for="weight">Berat Badan</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="weight" name="weight" min="30" max="300" step="0.1" inputmode="decimal" placeholder="cth. 68" autocomplete="off">
+                <input class="form-control" type="number" id="weight" name="weight" min="30" max="300" step="0.1" inputmode="decimal" autocomplete="off">
                 <span class="unit-suffix" aria-hidden="true">kg</span>
               </div>
               <p class="field-error" id="weight-error" hidden></p>
             </div>
 
             <div class="input-group">
-              <label class="input-label" for="height">Tinggi Badan <span class="label-hint">120–250 cm</span></label>
+              <label class="input-label" for="height">Tinggi Badan</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="height" name="height" min="120" max="250" step="0.1" inputmode="decimal" placeholder="cth. 170" autocomplete="off">
+                <input class="form-control" type="number" id="height" name="height" min="120" max="250" step="0.1" inputmode="decimal" autocomplete="off">
                 <span class="unit-suffix" aria-hidden="true">cm</span>
               </div>
               <p class="field-error" id="height-error" hidden></p>
@@ -79,17 +92,17 @@
 
             <div class="form-row">
               <div class="input-group">
-                <label class="input-label" for="neck">Lingkar Leher <span class="label-hint">20–80 cm</span></label>
+                <label class="input-label" for="neck">Lingkar Lengan Atas</label>
                 <div class="form-control-wrap with-unit">
-                  <input class="form-control" type="number" id="neck" name="neck" min="20" max="80" step="0.1" inputmode="decimal" placeholder="cth. 36" autocomplete="off">
+                  <input class="form-control" type="number" id="neck" name="neck" min="20" max="80" step="0.1" inputmode="decimal" autocomplete="off">
                   <span class="unit-suffix" aria-hidden="true">cm</span>
                 </div>
                 <p class="field-error" id="neck-error" hidden></p>
               </div>
               <div class="input-group">
-                <label class="input-label" for="waist">Lingkar Pinggang <span class="label-hint">40–200 cm</span></label>
+                <label class="input-label" for="waist">Lingkar Pinggang</label>
                 <div class="form-control-wrap with-unit">
-                  <input class="form-control" type="number" id="waist" name="waist" min="40" max="200" step="0.1" inputmode="decimal" placeholder="cth. 80" autocomplete="off">
+                  <input class="form-control" type="number" id="waist" name="waist" min="40" max="200" step="0.1" inputmode="decimal" autocomplete="off">
                   <span class="unit-suffix" aria-hidden="true">cm</span>
                 </div>
                 <p class="field-error" id="waist-error" hidden></p>
@@ -97,20 +110,17 @@
             </div>
 
             <div class="input-group">
-              <label class="input-label" for="targetWeight">
-                Target Berat <span class="chip chip-neutral">opsional</span>
-              </label>
+              <label class="input-label" for="hip">Lingkar Panggul</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="targetWeight" name="targetWeight" min="30" max="300" step="0.1" inputmode="decimal" placeholder="cth. 70" autocomplete="off">
-                <span class="unit-suffix" aria-hidden="true">kg</span>
+                <input class="form-control" type="number" id="hip" name="hip" min="40" max="200" step="0.1" inputmode="decimal" autocomplete="off">
+                <span class="unit-suffix" aria-hidden="true">cm</span>
               </div>
-              <p class="input-note">Kosongkan jika ingin menghitung target otomatis berdasarkan lean body mass.</p>
-              <p class="field-error" id="targetWeight-error" hidden></p>
+              <p class="input-note">Keterangan: Jika ingin menghitung tanpa data lingkar, Anda tetap bisa melanjutkan.</p>
             </div>
 
             <div class="result-actions" style="margin-top:22px">
               <button type="submit" id="btn-calculate" class="btn btn-primary btn-lg">
-                <span class="btn-default">Hitung Komposisi Tubuh</span>
+                <span class="btn-default" data-icon="calculator">Hitung Komposisi Tubuh</span>
                 <span class="btn-loading" hidden><span class="spinner" aria-hidden="true"></span> Menghitung…</span>
               </button>
             </div>
@@ -118,18 +128,35 @@
 
           <!-- ============ HASIL ============ -->
           <div id="result-panel" aria-live="polite">
-            <div class="card empty-state" id="result-empty">
+            <div class="card empty-state result-placeholder" id="result-empty">
               <div class="empty-icon" data-icon="calculator" aria-hidden="true"></div>
               <h2>Belum ada hasil</h2>
-              <p>Isi data tubuh Anda lalu klik Hitung untuk melihat komposisi tubuh, kebutuhan kalori, target berat, dan rekomendasi personal Anda.</p>
+              <p>Isi data tubuh Anda lalu klik Hitung untuk melihat persentase lemak tubuh, BMI, kebutuhan kalori, dan target berat.</p>
               <ul class="empty-features" role="list">
-                <li data-icon="shield-check">Data diproses tanpa disimpan ke server</li>
-                <li data-icon="clock">Kurang dari 1 menit</li>
-                <li data-icon="percent">Estimasi akurat</li>
+                <li data-icon="ruler">Input pengukuran utama</li>
+                <li data-icon="activity">Ringkasan kebutuhan energi</li>
+                <li data-icon="target">Target dan rekomendasi personal</li>
               </ul>
             </div>
             <div id="result-content" hidden></div>
           </div>
+
+          <aside class="card wellness-card" aria-label="Tips gaya hidup sehat">
+            <div class="wellness-copy">
+              <h2>Tips Hidup Sehat</h2>
+              <p>Jaga pola makan, rutin berolahraga, dan cukup istirahat untuk tubuh yang lebih baik.</p>
+              <ul role="list">
+                <li><span class="tip-icon tip-green" data-icon="utensils"></span><span>Konsumsi makanan bergizi seimbang</span></li>
+                <li><span class="tip-icon tip-orange" data-icon="activity"></span><span>Lakukan aktivitas fisik secara rutin</span></li>
+                <li><span class="tip-icon tip-blue" data-icon="info"></span><span>Minum air putih minimal 8 gelas/hari</span></li>
+                <li><span class="tip-icon tip-purple" data-icon="moon"></span><span>Tidur cukup 7–8 jam per hari</span></li>
+              </ul>
+            </div>
+            <div class="wellness-art" aria-hidden="true">
+              <img class="wellness-landscape" src="assets/images/kaltim/mockup/wellness-landscape.png" alt="">
+              <img class="wellness-bear" src="assets/images/kaltim/mockup/sunbear-tips.png" alt="">
+            </div>
+          </aside>
         </section>
       </div>
     </main>
@@ -140,6 +167,6 @@
   <div id="modal-root"></div>
   <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
   <script defer src="js/runtime-notice.js"></script>
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=kaltim-sidebar-5"></script>
 </body>
 </html>

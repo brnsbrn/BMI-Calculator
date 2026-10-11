@@ -46,27 +46,49 @@ export function rfmFemale(heightCm, waistCm) {
 }
 
 /**
+ * Fallback estimasi saat data lingkar tidak lengkap.
+ * Rumus Deurenberg: BF% = 1.2×BMI + 0.23×umur − 10.8×sex − 5.4.
+ */
+export function bmiAgeEstimate({ gender, age, weight, height }) {
+  const sex = gender === 'male' ? 1 : 0;
+  const heightM = height / 100;
+  const bmi = weight / (heightM * heightM);
+  return (1.2 * bmi) + (0.23 * age) - (10.8 * sex) - 5.4;
+}
+
+/**
  * Hitung body fat dengan clamp + pembulatan.
  * @param {'male'|'female'} gender
  * @returns {number} persen body fat (1 angka desimal, dibatasi 1–60)
  */
-export function calculateBodyFat({ gender, height, neck, waist }) {
-  const bodyFat = gender === 'male'
+export function calculateBodyFat(input) {
+  const { gender, height, neck, waist } = input;
+  const hasWaist = typeof waist === 'number' && Number.isFinite(waist);
+  const hasNeck = typeof neck === 'number' && Number.isFinite(neck);
+  const bodyFat = gender === 'male' && hasWaist && hasNeck
     ? navyMale(height, neck, waist)
-    : rfmFemale(height, waist);
+    : gender === 'female' && hasWaist
+      ? rfmFemale(height, waist)
+      : bmiAgeEstimate(input);
 
   return round1(clamp(bodyFat, MIN_BODY_FAT, MAX_BODY_FAT));
 }
 
-export function assertInputs({ age, weight, height, neck, waist }) {
+export function assertInputs({ gender = 'male', age, weight, height, neck, waist }) {
   assertRange('age', age);
   assertRange('weight', weight);
   assertRange('height', height);
-  assertRange('neck', neck);
-  assertRange('waist', waist);
 
-  if (waist <= neck) {
-    throw new RangeError('Lingkar pinggang harus lebih besar dari lingkar leher.');
+  if (waist !== null && waist !== undefined) {
+    assertRange('waist', waist);
+  }
+
+  if (gender === 'male' && neck !== null && neck !== undefined) {
+    assertRange('neck', neck);
+  }
+
+  if (gender === 'male' && waist !== null && waist !== undefined && neck !== null && neck !== undefined && waist <= neck) {
+    throw new RangeError('Lingkar pinggang harus lebih besar dari lingkar lengan atas.');
   }
 }
 

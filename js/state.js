@@ -154,7 +154,7 @@ export function hasCheckinForWeek(week) {
  * Perhitungan perubahan dari log sebelumnya.
  */
 export function computeChange(weightNow, waistNow) {
-  const logs = getProgress();
+  const logs = state.progress;
   const prev = logs[logs.length - 1];
   return {
     weightChange: prev ? round2(weightNow - prev.weight) : null,
