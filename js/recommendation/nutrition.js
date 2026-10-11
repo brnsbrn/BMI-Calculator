@@ -11,9 +11,10 @@ export const CALORIE_FLOOR = 1200;
  * @param {number|null} adjustmentOverride override dari target berat manual
  */
 export function calculateNutrition(assessment, rule, adjustmentOverride = null) {
-  const adjustment = adjustmentOverride ?? Math.round(((rule.calorie_adjustment_min ?? 0) + (rule.calorie_adjustment_max ?? 0)) / 2);
-  const adjustmentMin = adjustmentOverride ?? rule.calorie_adjustment_min ?? 0;
-  const adjustmentMax = adjustmentOverride ?? rule.calorie_adjustment_max ?? 0;
+  const safeAdjustment = value => assessment.bmi < 18.5 ? Math.max(0, value) : value;
+  const adjustment = safeAdjustment(adjustmentOverride ?? Math.round(((rule.calorie_adjustment_min ?? 0) + (rule.calorie_adjustment_max ?? 0)) / 2));
+  const adjustmentMin = safeAdjustment(adjustmentOverride ?? rule.calorie_adjustment_min ?? 0);
+  const adjustmentMax = safeAdjustment(adjustmentOverride ?? rule.calorie_adjustment_max ?? 0);
 
   const calorieTarget = Math.max(CALORIE_FLOOR, assessment.tdee + adjustment);
   const calorieTargetMin = Math.max(CALORIE_FLOOR, assessment.tdee + adjustmentMin);

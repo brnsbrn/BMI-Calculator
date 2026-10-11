@@ -56,7 +56,7 @@ function renderPage(plan) {
       <div>
         <div class="badge badge-neutral">Minggu ${week}</div>
         <div class="plan-targets">
-          <span class="badge badge-brand">Target body fat ${plan.targetBodyFat != null ? `${plan.targetBodyFat}%` : 'Pertahankan'}</span>
+          <span class="badge badge-brand">Target body fat ${plan.targetBodyFat != null ? `${plan.targetBodyFat}%` : 'belum ditetapkan'}</span>
           ${plan.targetWeight != null ? `<span class="badge badge-success">Target berat ${fmtNum(plan.targetWeight, 1)} kg</span>` : ''}
           <span class="badge badge-neutral">${escapeHtml(plan.timeline)}</span>
         </div>

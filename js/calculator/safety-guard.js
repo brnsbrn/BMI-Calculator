@@ -13,6 +13,14 @@ export const HEALTHY_MIN = {
 export function buildWarnings({ gender, bodyFat, age, weight, height, bmi }) {
   const warnings = [];
 
+  if (bmi < 18.5) {
+    warnings.push({
+      code: 'bmi_underweight',
+      message: 'BMI menunjukkan berat badan kurang. Target penurunan berat badan dan defisit kalori otomatis dinonaktifkan. Periksa kembali ukuran lingkar dan konsultasikan kebutuhan nutrisi dengan tenaga kesehatan.',
+      tone: 'warning',
+    });
+  }
+
   if (age < 18) {
     warnings.push({
       code: 'age_below_min',

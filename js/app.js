@@ -17,8 +17,8 @@ function boot() {
   try {
     initShell();
     const modules = {
-      calculator: './ui/calculator-ui.js?v=kaltim-assets-4',
-      plan: './ui/plan-ui.js?v=kaltim-assets-4',
+      calculator: './ui/calculator-ui.js?v=bmi-safety-13',
+      plan: './ui/plan-ui.js?v=bmi-safety-13',
       progress: './ui/progress-ui.js?v=kaltim-assets-4',
       checkin: './ui/checkin-ui.js?v=kaltim-assets-4',
     };

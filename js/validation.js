@@ -3,12 +3,13 @@
  * Menandai error per-field pada elemen .field-error di samping input.
  */
 
-import { LIMITS } from './calculator/body-fat.js';
+import { LIMITS } from './calculator/body-fat.js?v=male-fix-12';
+import { ACTIVITY_FACTORS } from './calculator/tdee.js';
 
 export function parseNum(value) {
   if (value === null || value === undefined || String(value).trim() === '') return null;
   const num = Number(value);
-  return Number.isNaN(num) ? null : num;
+  return Number.isFinite(num) ? num : null;
 }
 
 // Re-export untuk konfigurasi range yang dipakai bersama
@@ -38,28 +39,22 @@ export function validateCalculatorForm(values) {
     v[field] = parseNum(v[field]);
   }
 
-  const waistValue = parseNum(v.waist);
-  const neckValue = parseNum(v.neck);
-
-  if (waistValue !== null) {
-    const waistMsg = validateNumber(v.waist, 'waist');
-    if (waistMsg) errors.waist = waistMsg;
+  if (!errors.age && !Number.isInteger(v.age)) errors.age = 'Umur harus berupa tahun bulat.';
+  for (const field of ['waist', 'neck', 'hip']) {
+    if (v[field] != null && String(v[field]).trim() !== '') {
+      const msg = validateNumber(v[field], field);
+      if (msg) errors[field] = msg;
+    }
+    v[field] = parseNum(v[field]);
   }
-  v.waist = waistValue;
-
-  if (needsNeck && neckValue !== null) {
-    const neckMsg = validateNumber(v.neck, 'neck');
-    if (neckMsg) errors.neck = neckMsg;
-  }
-  v.neck = neckValue;
 
   // relasi waist > neck (khusus male)
   if (needsNeck && !errors.waist && !errors.neck && v.waist !== null && v.neck !== null && v.waist <= v.neck) {
-    errors.waist = 'Lingkar pinggang harus lebih besar dari lingkar lengan atas.';
+    errors.waist = 'Lingkar pinggang harus lebih besar dari lingkar leher.';
   }
 
   // target berat opsional
-  if (parseNum(v.targetWeight) !== null) {
+  if (v.targetWeight != null && String(v.targetWeight).trim() !== '') {
     const msg = validateNumber(v.targetWeight, 'weight');
     if (msg) errors.targetWeight = 'Target berat harus 30–300 kg.';
     v.targetWeight = parseNum(v.targetWeight);
@@ -68,6 +63,9 @@ export function validateCalculatorForm(values) {
     v.targetWeight = null;
     v.targetWeightManual = false;
   }
+
+  v.activityLevel = v.activityLevel || 'moderate';
+  if (!Object.hasOwn(ACTIVITY_FACTORS, v.activityLevel)) errors.activityLevel = 'Pilih tingkat aktivitas yang tersedia.';
 
   return { ok: Object.keys(errors).length === 0, errors, values: v };
 }
@@ -82,6 +80,7 @@ export function validateCheckinForm(values) {
 
   const weightMsg = validateNumber(v.weight, 'weight');
   if (weightMsg) errors.weight = 'Berat harus 30–300 kg.';
+  v.weight = parseNum(v.weight);
 
   // waist opsional, tapi wajib > minimal
   if (parseNum(v.waist) !== null) {
@@ -137,7 +136,7 @@ function validateNumber(value, field) {
     return `${LABELS[field]} wajib diisi.`;
   }
   const { min, max } = LIMITS[field];
-  if (value < min || value > max) {
+  if (parseNum(value) < min || parseNum(value) > max) {
     return `${LABELS[field]} harus antara ${min}–${max}.`;
   }
   return '';
@@ -147,8 +146,9 @@ const LABELS = {
   age: 'Umur',
   weight: 'Berat badan',
   height: 'Tinggi badan',
-  neck: 'Lingkar lengan atas',
+  neck: 'Lingkar leher',
   waist: 'Lingkar pinggang',
+  hip: 'Lingkar panggul',
 };
 
 /* ---------------- DOM helpers ---------------- */

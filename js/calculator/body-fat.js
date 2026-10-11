@@ -6,7 +6,7 @@
  * - Wanita: RFM (Relative Fat Mass, Woolcott & Bergman 2018)
  */
 
-export const BODY_FAT_VERSION = '1.0';
+export const BODY_FAT_VERSION = '1.2';
 
 export const LIMITS = {
   age: { min: 18, max: 80 },
@@ -14,6 +14,7 @@ export const LIMITS = {
   height: { min: 120, max: 250 },
   neck: { min: 20, max: 80 },
   waist: { min: 40, max: 200 },
+  hip: { min: 40, max: 200 },
 };
 
 export const MAX_BODY_FAT = 60;
@@ -24,12 +25,9 @@ export const MIN_BODY_FAT = 1;
  * @returns {number} body fat dalam persen
  */
 export function navyMale(heightCm, neckCm, waistCm) {
-  const heightIn = heightCm / 2.54;
-  const neckIn = neckCm / 2.54;
-  const waistIn = waistCm / 2.54;
-
-  const log1 = Math.log10(waistIn - neckIn);
-  const log2 = Math.log10(heightIn);
+  // NHRC report 84-11 density coefficients require centimetres, not inches.
+  const log1 = Math.log10(waistCm - neckCm);
+  const log2 = Math.log10(heightCm);
 
   const density = 1.0324 - 0.19077 * log1 + 0.15456 * log2;
 
@@ -57,7 +55,7 @@ export function bmiAgeEstimate({ gender, age, weight, height }) {
 }
 
 /**
- * Hitung body fat dengan clamp + pembulatan.
+ * Hitung body fat dengan pembulatan; estimasi pria di luar domain ditolak.
  * @param {'male'|'female'} gender
  * @returns {number} persen body fat (1 angka desimal, dibatasi 1–60)
  */
@@ -71,30 +69,51 @@ export function calculateBodyFat(input) {
       ? rfmFemale(height, waist)
       : bmiAgeEstimate(input);
 
+  if (gender === 'male' && (!Number.isFinite(bodyFat) || bodyFat < MIN_BODY_FAT || bodyFat > MAX_BODY_FAT)) {
+    const measured = hasWaist && hasNeck;
+    const error = new RangeError(measured
+      ? 'Ukuran leher dan pinggang menghasilkan estimasi di luar rentang rumus. Periksa kembali pengukuran, atau kosongkan data lingkar untuk memakai estimasi BMI dan umur.'
+      : 'Data tubuh menghasilkan estimasi di luar rentang rumus. Periksa kembali umur, berat, dan tinggi badan.');
+    error.field = measured ? 'waist' : null;
+    throw error;
+  }
   return round1(clamp(bodyFat, MIN_BODY_FAT, MAX_BODY_FAT));
 }
 
-export function assertInputs({ gender = 'male', age, weight, height, neck, waist }) {
+export function bodyFatFormula({ gender, neck, waist }) {
+  if (gender === 'male' && Number.isFinite(neck) && Number.isFinite(waist)) {
+    return 'US Navy (Hodgdon–Beckett)';
+  }
+  if (gender === 'female' && Number.isFinite(waist)) {
+    return 'RFM (Woolcott & Bergman 2018)';
+  }
+  return 'Deurenberg (BMI, umur, dan jenis kelamin)';
+}
+
+export function assertInputs({ gender = 'male', age, weight, height, neck, waist, hip }) {
+  if (gender !== 'male' && gender !== 'female') throw new RangeError('Pilih jenis kelamin.');
   assertRange('age', age);
   assertRange('weight', weight);
   assertRange('height', height);
+  if (!Number.isInteger(age)) throw new RangeError('Umur harus berupa tahun bulat.');
 
   if (waist !== null && waist !== undefined) {
     assertRange('waist', waist);
   }
 
-  if (gender === 'male' && neck !== null && neck !== undefined) {
+  if (neck !== null && neck !== undefined) {
     assertRange('neck', neck);
   }
+  if (hip !== null && hip !== undefined) assertRange('hip', hip);
 
   if (gender === 'male' && waist !== null && waist !== undefined && neck !== null && neck !== undefined && waist <= neck) {
-    throw new RangeError('Lingkar pinggang harus lebih besar dari lingkar lengan atas.');
+    throw new RangeError('Lingkar pinggang harus lebih besar dari lingkar leher.');
   }
 }
 
 function assertRange(field, value) {
   const { min, max } = LIMITS[field];
-  if (typeof value !== 'number' || Number.isNaN(value) || value < min || value > max) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
     throw new RangeError(`${field} harus berada di rentang ${min}–${max}.`);
   }
 }

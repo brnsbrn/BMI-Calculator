@@ -4,12 +4,36 @@
  */
 
 import { RULES, RECOMMENDATION_RULES_VERSION } from '../data/recommendation-rules.js';
-import { calculateNutrition } from './nutrition.js';
+import { calculateNutrition } from './nutrition.js?v=bmi-safety-13';
 import { generateMealPlan, hashCrc32 } from './meal-plan.js';
 import { weeklySchedule } from './workout.js';
 
-export function resolveRule(gender, category) {
-  return RULES[gender]?.[category] ?? null;
+export function resolveRule(gender, category, bmi = null) {
+  const rule = RULES[gender]?.[category] ?? null;
+  if (!rule || bmi === null || bmi >= 18.5) return rule;
+  // BMI screening takes precedence over an automatic fat-loss recommendation.
+  return {
+    ...rule,
+    target_body_fat: null,
+    target_body_fat_min: null,
+    target_body_fat_max: null,
+    target_body_fat_deferred: true,
+    timeline_label: 'Perlu penilaian tenaga kesehatan',
+    timeline_min_months: null,
+    timeline_max_months: null,
+    primary_focus: 'Pemulihan Berat Badan',
+    why: 'BMI menunjukkan berat badan kurang. Estimasi lemak tubuh tidak boleh menjadi dasar penurunan berat badan pada kondisi ini.',
+    what: 'Tidak ada defisit kalori otomatis.',
+    how: 'Konsultasikan pengukuran dan kebutuhan nutrisi dengan tenaga kesehatan. Angka kalori di sini hanya estimasi kebutuhan harian, bukan resep penurunan berat badan.',
+    calorie_strategy: 'Tanpa defisit; perlu penilaian tenaga kesehatan',
+    calorie_adjustment_min: 0,
+    calorie_adjustment_max: 0,
+    workout_template: 'recovery_focus_f',
+    workout_focus: 'Aktivitas ringan sesuai kemampuan dan arahan tenaga kesehatan.',
+    cardio_guidance: 'Hindari program kardio intens atau program penurunan berat badan otomatis.',
+    progress_focus: 'Pantau berat, energi, dan kondisi tubuh bersama tenaga kesehatan.',
+    safety_flag: true,
+  };
 }
 
 /**
@@ -40,6 +64,7 @@ export function mealSeed(assessment) {
 }
 
 export function targetDisplay(rule) {
+  if (rule.target_body_fat_deferred) return 'Belum ditetapkan';
   const has = (v) => v !== null && v !== undefined;
   if (has(rule.target_body_fat)) {
     return `${Math.round(rule.target_body_fat)}%`;
@@ -51,7 +76,9 @@ export function targetDisplay(rule) {
 }
 
 export function buildRecommendation(assessment, rule = null) {
-  const resolved = rule ?? resolveRule(assessment.gender, assessment.category);
+  const resolved = assessment.bmi < 18.5
+    ? resolveRule(assessment.gender, assessment.category, assessment.bmi)
+    : rule ?? resolveRule(assessment.gender, assessment.category);
 
   if (!resolved) {
     throw new Error(`Tidak ada rule rekomendasi untuk ${assessment.gender}/${assessment.category}.`);
@@ -59,7 +86,15 @@ export function buildRecommendation(assessment, rule = null) {
 
   const adjustment = adjustmentFromTarget(assessment);
   const nutrition = calculateNutrition(assessment, resolved, adjustment);
-  const schedule = weeklySchedule(resolved.workout_template);
+  const schedule = assessment.bmi < 18.5
+    ? Array.from({ length: 7 }, (_, i) => ({
+      day_of_week: i + 1,
+      title: 'Menunggu arahan tenaga kesehatan',
+      description: 'Program latihan otomatis ditunda sampai kondisi berat badan kurang dinilai.',
+      type: 'rest',
+      duration_minutes: 0,
+    }))
+    : weeklySchedule(resolved.workout_template);
   const seed = mealSeed(assessment);
   const mealPlan = generateMealPlan(
     {

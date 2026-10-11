@@ -107,10 +107,19 @@ export function createPlanFromRecommendation(assessment, recommendation) {
 }
 
 export function savePlan(plan, baselineLog) {
-  state.plan = plan;
-  // baseline baru menggantikan baseline lama, riwayat check-in tetap dipertahankan
-  state.progress = state.progress.filter((p) => p.source !== 'assessment');
-  state.progress.push(baselineLog);
+  const previous = state.plan;
+  state.plan = previous ? {
+    ...plan,
+    id: previous.id,
+    createdAt: previous.createdAt,
+    startedAt: previous.startedAt,
+    currentWeek: previous.currentWeek,
+  } : plan;
+  // Recalculation updates the ongoing plan without rewinding recorded weeks.
+  if (!previous || state.checkins.length === 0) {
+    state.progress = state.progress.filter((p) => p.source !== 'assessment');
+    state.progress.push(baselineLog);
+  }
   commit();
 }
 

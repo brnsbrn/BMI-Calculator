@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="css/progress.css">
   <link rel="stylesheet" href="css/check-in.css">
   <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/kaltim-theme.css?v=kaltim-spacing-10">
+  <link rel="stylesheet" href="css/kaltim-theme.css?v=bmi-safety-13">
 </head>
 <body data-page="calculator">
   <a class="skip-link" href="#main-content">Langsung ke konten</a>
@@ -92,7 +92,7 @@
 
             <div class="form-row">
               <div class="input-group">
-                <label class="input-label" for="neck">Lingkar Lengan Atas</label>
+                <label class="input-label" for="neck">Lingkar Leher</label>
                 <div class="form-control-wrap with-unit">
                   <input class="form-control" type="number" id="neck" name="neck" min="20" max="80" step="0.1" inputmode="decimal" autocomplete="off">
                   <span class="unit-suffix" aria-hidden="true">cm</span>
@@ -115,7 +115,30 @@
                 <input class="form-control" type="number" id="hip" name="hip" min="40" max="200" step="0.1" inputmode="decimal" autocomplete="off">
                 <span class="unit-suffix" aria-hidden="true">cm</span>
               </div>
-              <p class="input-note">Keterangan: Jika ingin menghitung tanpa data lingkar, Anda tetap bisa melanjutkan.</p>
+              <p class="field-error" id="hip-error" hidden></p>
+              <p class="input-note">Data lingkar opsional. Panggul dicatat sebagai pengukuran tambahan.</p>
+            </div>
+
+            <div>
+              <div class="input-group">
+                <label class="input-label" for="targetWeight">Target Berat</label>
+                <div class="form-control-wrap with-unit">
+                  <input class="form-control" type="number" id="targetWeight" name="targetWeight" min="30" max="300" step="0.1" inputmode="decimal" autocomplete="off" placeholder="Otomatis">
+                  <span class="unit-suffix" aria-hidden="true">kg</span>
+                </div>
+                <p class="field-error" id="targetWeight-error" hidden></p>
+              </div>
+              <div class="input-group">
+                <label class="input-label" for="activityLevel">Aktivitas</label>
+                <select class="form-control" id="activityLevel" name="activityLevel">
+                  <option value="sedentary">Jarang olahraga</option>
+                  <option value="light">Ringan (1–2x/minggu)</option>
+                  <option value="moderate" selected>Sedang (3–4x/minggu)</option>
+                  <option value="active">Aktif (5–6x/minggu)</option>
+                  <option value="very_active">Sangat aktif</option>
+                </select>
+                <p class="field-error" id="activityLevel-error" hidden></p>
+              </div>
             </div>
 
             <div class="result-actions" style="margin-top:22px">
@@ -167,6 +190,6 @@
   <div id="modal-root"></div>
   <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
   <script defer src="js/runtime-notice.js"></script>
-  <script type="module" src="js/app.js?v=kaltim-header-6"></script>
+  <script type="module" src="js/app.js?v=bmi-safety-13"></script>
 </body>
 </html>

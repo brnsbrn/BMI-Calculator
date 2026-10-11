@@ -60,7 +60,7 @@
       /* ---- nonspecific ---- */
       await test('classify via buildAssessment golden', async () => {
         const a = buildAssessment({ gender: 'male', age: 28, weight: 85, height: 180, neck: 40, waist: 100, activityLevel: 'moderate', targetWeight: null, targetWeightManual: false });
-        if (a.category !== 'high') throw new Error(`kategori ${a.category}`);
+        if (a.category !== 'very_high') throw new Error(`kategori ${a.category}`);
         if (a.bodyFat !== a.bodyFat) throw new Error('NaN bodyFat');
       });
 
@@ -148,15 +148,26 @@
         const content = document.getElementById('result-content');
         if (!content || content.hidden) throw new Error('hasil tidak tampil');
         if (content.querySelector('.big-bf-number')?.textContent.includes('NaN')) throw new Error('NaN di hasil');
-        if (!content.querySelector('.meal-card')) throw new Error('menu tidak dirender');
-
-        // simpan sebagai rencana
-        const saveBtn = content.querySelector('.js-action-save');
-        if (!saveBtn) throw new Error('tombol simpan hilang');
-        saveBtn.click();
-        await sleep(50);
+        if (!getState().recommendation.mealPlan.length) throw new Error('menu tidak dibuat');
+        if (getState().assessment.bmi !== 27.8) throw new Error('BMI tidak sesuai input');
         if (!getPlan()) throw new Error('rencana tidak tersimpan');
         if (getCurrentWeek() !== 1) throw new Error('minggu harus 1');
+
+        const first = getState().assessment;
+        set('weight', 98); set('waist', 110); set('targetWeight', 75);
+        document.getElementById('weight').dispatchEvent(new Event('input', { bubbles: true }));
+        if (!content.hidden) throw new Error('hasil lama masih terlihat setelah input berubah');
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        await sleep(300);
+        const second = getState().assessment;
+        if (second.bmi !== 30.9 || second.bmi === first.bmi) throw new Error('BMI tidak diperbarui');
+        if (second.bodyFat <= first.bodyFat) throw new Error('body fat tidak diperbarui');
+        if (second.targetWeight !== 75) throw new Error('target manual tidak terbaca');
+        if (!content.querySelector('.bmi-number').textContent.includes('30,9')) throw new Error('hasil DOM tidak terbaru');
+
+        set('weight', 88); set('waist', 102); set('targetWeight', '');
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        await sleep(300);
 
         // hapus fixture
         document.getElementById('calculator-form').remove();

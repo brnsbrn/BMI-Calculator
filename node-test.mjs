@@ -11,6 +11,9 @@ import { classifyBodyFat } from './js/calculator/body-fat-classifier.js';
 import { calculateBmi, bmiLabel } from './js/calculator/bmi.js';
 import { calculateBmr } from './js/calculator/bmr.js';
 import { calculateTdee } from './js/calculator/tdee.js';
+import { validateCalculatorForm, validateCheckinForm } from './js/validation.js';
+import { spectrumPosition } from './js/ui/spectrum.js';
+import { BOUNDARIES } from './js/calculator/body-fat-classifier.js';
 import { calculateTargetWeight, leanMass } from './js/calculator/target-weight.js';
 import { buildAssessment } from './js/calculator/assessment.js';
 import { calculateNutrition, CALORIE_FLOOR } from './js/recommendation/nutrition.js';
@@ -51,20 +54,20 @@ function assertClose(actual, expected, tol = 0.11) {
 
 console.log('=== Body Fat Calculator ===');
 
-test('male valid: US Navy golden value (170/38/86) → 12.2%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 170, neck: 38, waist: 86 }), 12.2);
+test('male valid: metric NHRC density (170/38/86) → 18.6%', () => {
+  assertClose(calculateBodyFat({ gender: 'male', height: 170, neck: 38, waist: 86 }), 18.6);
 });
 
-test('male valid: US Navy golden value (178/40/90) → 12.3%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 178, neck: 40, waist: 90 }), 12.3);
+test('male valid: metric NHRC density (178/40/90) → 18.7%', () => {
+  assertClose(calculateBodyFat({ gender: 'male', height: 178, neck: 40, waist: 90 }), 18.7);
 });
 
-test('male valid: US Navy (175/42/95) → 14.9%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 175, neck: 42, waist: 95 }), 14.9);
+test('male valid: metric NHRC density (175/42/95) → 21.4%', () => {
+  assertClose(calculateBodyFat({ gender: 'male', height: 175, neck: 42, waist: 95 }), 21.4);
 });
 
-test('male valid: US Navy (165/35/75) → 6.6%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 165, neck: 35, waist: 75 }), 6.6);
+test('male valid: metric NHRC density (165/35/75) → 12.8%', () => {
+  assertClose(calculateBodyFat({ gender: 'male', height: 165, neck: 35, waist: 75 }), 12.8);
 });
 
 test('female valid: RFM (160/80) → 36.0%', () => {
@@ -106,10 +109,25 @@ test('invalid activity level falls back to sedentary', () => {
   assert(calculateTdee(bmr, 'invalid') === Math.round(bmr * 1.2));
 });
 
-test('body fat clamped min 1 / max 60', () => {
-  // waist jauh lebih besar dari neck → nilai sangat tinggi → di-clamp 60
-  const high = calculateBodyFat({ gender: 'male', height: 130, neck: 20, waist: 199 });
-  assert(high === 60, `expected 60, got ${high}`);
+test('male out-of-domain estimates are rejected, not forced to 1 or 60', () => {
+  for (const input of [
+    { gender: 'male', height: 180, neck: 32, waist: 60 },
+    { gender: 'male', height: 130, neck: 20, waist: 199 },
+  ]) {
+    let error;
+    try { calculateBodyFat(input); } catch (e) { error = e; }
+    assert(error instanceof RangeError && error.field === 'waist');
+  }
+});
+
+test('male reported measurements vary with waist: 55, 65, 80 cm', () => {
+  const results = [55, 65, 80].map(waist => calculateBodyFat({ gender: 'male', height: 167, neck: 25, waist }));
+  assert(results[0] === 2.4 && results[1] === 12.5 && results[2] === 24.2, results.join(', '));
+});
+
+test('female calculation and bounds remain unchanged', () => {
+  assert(calculateBodyFat({ gender: 'female', height: 160, waist: 80 }) === 36);
+  assert(calculateBodyFat({ gender: 'female', height: 130, waist: 199 }) === 60);
 });
 
 test('BMI golden value (85/180) → 26.2', () => {
@@ -206,9 +224,9 @@ test('assessment lengkap male valid', () => {
     activityLevel: 'active', targetWeight: null, targetWeightManual: false,
   });
   assertClose(a.bmi, 26.2, 0.06);
-  assert(a.category === 'moderate', `kategori ${a.category} (bf ${a.bodyFat})`);
+  assert(a.category === 'high', `kategori ${a.category} (bf ${a.bodyFat})`);
   assert(a.targetBodyFat === 14, `target body fat ${a.targetBodyFat}`);
-  assert(a.timeline === 'Berkelanjutan');
+  assert(a.timeline === '4–6 bulan');
   assert(a.formula === 'US Navy (Hodgdon–Beckett)');
   assert(a.bmr > 1000 && a.tdee > a.bmr);
   assert(a.fatMass > 0 && a.leanMass > 0);
@@ -291,7 +309,7 @@ test('buildRecommendation produces full result & deterministic meal plan', () =>
   const r1 = buildRecommendation(a);
   const r2 = buildRecommendation(a);
 
-  assert(a.category === 'high', `kategori ${a.category} (bf ${a.bodyFat})`);
+  assert(a.category === 'very_high', `kategori ${a.category} (bf ${a.bodyFat})`);
   assert(r1.primaryFocus === 'Penurunan Lemak');
   assert(r1.mealPlan.length === 5);
   assert(JSON.stringify(r1.mealPlan) === JSON.stringify(r2.mealPlan), 'meal plan harus deterministik');
@@ -320,7 +338,7 @@ test('female moderate → template full_body_recreational_f', () => {
 
 test('safety flag for very_low category', () => {
   const a = buildAssessment({
-    gender: 'male', age: 25, weight: 65, height: 180, neck: 32, waist: 60,
+    gender: 'male', age: 25, weight: 65, height: 180, neck: 32, waist: 65,
     activityLevel: 'moderate', targetWeight: null, targetWeightManual: false,
   });
   const r = buildRecommendation(a);
@@ -427,6 +445,108 @@ test('reset menghapus seluruh state', () => {
 });
 
 console.log('=== Summary ===');
+test('reported 42kg / 167cm profile is underweight, with no automatic weight-loss target', () => {
+  const a = buildAssessment({ gender: 'male', age: 25, weight: 42, height: 167, neck: 26, waist: 80, hip: 55, activityLevel: 'moderate' });
+  const r = buildRecommendation(a);
+  assert(a.bmi === 15.1 && a.bmiLabel === 'Berat badan kurang');
+  assert(a.bodyFat === 23.5 && a.category === 'high');
+  assert(a.targetWeight === null && a.targetBodyFat === null);
+  assert(a.warnings.some(w => w.code === 'bmi_underweight'));
+  assert(r.calorieTarget >= a.tdee && r.safetyFlag);
+  assert(r.primaryFocus === 'Pemulihan Berat Badan');
+  assert(r.weeklySchedule.every(day => day.type === 'rest'));
+});
+
+test('underweight manual lower-weight target rejected, higher-weight target accepted', () => {
+  const input = { gender: 'male', age: 25, weight: 42, height: 167, neck: 26, waist: 80, activityLevel: 'moderate', targetWeightManual: true };
+  let error;
+  try { buildAssessment({ ...input, targetWeight: 37 }); } catch (e) { error = e; }
+  assert(error instanceof RangeError && error.field === 'targetWeight');
+  const a = buildAssessment({ ...input, targetWeight: 52 });
+  assert(a.targetWeight === 52 && buildRecommendation(a).calorieTarget >= a.tdee);
+});
+
+test('nutrition cannot prescribe a deficit for underweight, even with override', () => {
+  const n = calculateNutrition({ bmi: 15.1, tdee: 2083, weight: 42 }, { calorie_adjustment_min: -500, calorie_adjustment_max: -300 }, -500);
+  assert(n.calorie_target === 2083 && n.calorie_target_min === 2083 && n.calorie_target_max === 2083);
+});
+
+test('body fat gauge marker aligns with category bands and boundaries', () => {
+  assertClose(spectrumPosition(23.5, BOUNDARIES), 75.7);
+  for (const [value, position] of [[0, 0], [6, 20], [14, 40], [18, 60], [25, 80], [60, 100]]) {
+    assertClose(spectrumPosition(value, BOUNDARIES), position, 0.001);
+  }
+});
+
+test('BMI gauge marker aligns with BMI bands', () => {
+  const ranges = [{ min: 12, max: 18.5 }, { min: 18.5, max: 25 }, { min: 25, max: 30 }, { min: 30, max: 45 }];
+  assert(spectrumPosition(15.1, ranges) < 25);
+  assert(spectrumPosition(23.5, ranges) >= 25 && spectrumPosition(23.5, ranges) < 50);
+});
+test('recalculation changes BMI, body fat, BMR and TDEE', () => {
+  const a = buildAssessment({ gender: 'male', age: 25, weight: 70, height: 175, neck: 38, waist: 80, activityLevel: 'light' });
+  const b = buildAssessment({ gender: 'male', age: 25, weight: 90, height: 175, neck: 38, waist: 100, activityLevel: 'active' });
+  assert(a.bmi === 22.9 && b.bmi === 29.4);
+  assert(b.bodyFat > a.bodyFat && b.bmr > a.bmr && b.tdee > a.tdee);
+});
+
+for (const gender of ['male', 'female']) {
+  test(`${gender}: missing circumferences uses Deurenberg, with correct method label`, () => {
+    const a = buildAssessment({ gender, age: 30, weight: 65, height: 165, neck: null, waist: null });
+    assertClose(a.bodyFat, gender === 'male' ? 19.4 : 30.2);
+    assert(a.formula.startsWith('Deurenberg'));
+  });
+  test(`${gender}: maintenance category retains current weight`, () => {
+    const a = buildAssessment({ gender, age: 25, weight: 60, height: 165, neck: null, waist: null });
+    const maintenance = { ...a, category: 'moderate', bodyFat: 16 };
+    const r = buildRecommendation(maintenance);
+    assert(r.calorieTarget === maintenance.tdee);
+    const measured = buildAssessment({ gender, age: 25, weight: 60, height: gender === 'male' ? 165 : 168, neck: gender === 'male' ? 38 : null, waist: gender === 'male' ? 81 : 56 });
+    assert(measured.category === 'moderate', measured.category);
+    assert(measured.targetWeight === measured.weight);
+  });
+  test(`${gender}: document category targets and timelines`, () => {
+    for (const [category, target, timeline] of [
+      ['very_high', 18, '8–12 bulan'], ['high', 14, '4–6 bulan'],
+      ['low', gender === 'male' ? 8 : 14, '3–6 bulan'],
+      ['very_low', gender === 'male' ? 8 : 14, gender === 'male' ? '1–2 bulan' : '1–3 bulan'],
+    ]) {
+      const rule = resolveRule(gender, category);
+      assert(rule.target_body_fat === target && rule.timeline_label === timeline);
+    }
+  });
+}
+
+test('calculator validation rejects malformed optional values, Infinity and fractional age', () => {
+  const base = { gender: 'male', age: '25', weight: '70', height: '175', activityLevel: 'moderate' };
+  assert(validateCalculatorForm(base).ok);
+  for (const [field, value] of [['neck', 'bad'], ['waist', 'Infinity'], ['hip', '10'], ['targetWeight', 'bad'], ['weight', 'Infinity'], ['age', '25.5'], ['activityLevel', 'bad']]) {
+    const result = validateCalculatorForm({ ...base, [field]: value });
+    assert(!result.ok && result.errors[field], `${field} must fail`);
+  }
+});
+
+test('check-in values are numeric after form validation', () => {
+  const result = validateCheckinForm({ weight: '70.5', waist: '80', bodyFat: '20', workoutsCompleted: '4', energy: '3', difficulty: '3' });
+  assert(result.ok && result.values.weight === 70.5 && result.values.waist === 80);
+});
+
+test('recalculation preserves ongoing week and progress history', () => {
+  resetState();
+  const first = buildAssessment(profile());
+  const initial = createPlanFromRecommendation(first, buildRecommendation(first));
+  savePlan(initial.plan, initial.baselineLog);
+  addCheckin({ week: 1, date: '2026-08-30', weight: 86, waist: 100, bodyFat: 25 });
+  incrementWeek();
+  const history = JSON.stringify(getState().progress);
+  const updated = buildAssessment({ ...profile(), weight: 86, waist: 100 });
+  const next = createPlanFromRecommendation(updated, buildRecommendation(updated));
+  savePlan(next.plan, next.baselineLog);
+  assert(getCurrentWeek() === 2 && !hasCheckinForWeek(2));
+  assert(getPlan().id === initial.plan.id);
+  assert(JSON.stringify(getState().progress) === history);
+  resetState();
+});
 console.log(`\nPassed: ${passed}  Failed: ${failed}`);
 if (failed > 0) {
   console.error('\nFailures:');

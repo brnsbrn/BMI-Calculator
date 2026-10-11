@@ -2,24 +2,22 @@
  * calculator-ui.js — halaman Kalkulator: form, perhitungan, hasil.
  */
 
-import { buildAssessment } from '../calculator/assessment.js';
+import { buildAssessment } from '../calculator/assessment.js?v=bmi-safety-13';
 import { BOUNDARIES, categoryColor, categoryBadgeClass, categoryLabel } from '../calculator/body-fat-classifier.js';
-import { buildRecommendation } from '../recommendation/engine.js';
+import { buildRecommendation } from '../recommendation/engine.js?v=bmi-safety-13';
+import { spectrumPosition } from './spectrum.js';
 import {
   setAssessment,
   setRecommendation,
   createPlanFromRecommendation,
   savePlan,
 } from '../state.js';
-import { validateCalculatorForm, showFieldError, clearFieldErrors } from '../validation.js';
+import { validateCalculatorForm, showFieldError, clearFieldErrors } from '../validation.js?v=male-fix-12';
 import { icon } from './icons.js';
 import { toast } from './modal.js';
 import { fmtNum, fmtKcal, escapeHtml } from '../format.js';
 
-const BF_MIN = 0;
-const BF_MAX = 60;
 const BMI_MIN = 12;
-const BMI_MAX = 45;
 
 const BMI_SEGMENTS = [
   { to: 18.5, label: 'Kurang', color: '#3b82f6' },
@@ -28,7 +26,7 @@ const BMI_SEGMENTS = [
   { to: 45, label: 'Obesitas', color: '#dc2626' },
 ];
 
-const FIELD_IDS = ['gender', 'age', 'weight', 'height', 'neck', 'waist', 'targetWeight'];
+const FIELD_IDS = ['gender', 'age', 'weight', 'height', 'neck', 'waist', 'hip', 'targetWeight', 'activityLevel'];
 
 export function initCalculator() {
   const form = document.getElementById('calculator-form');
@@ -38,6 +36,7 @@ export function initCalculator() {
   initGenderSeg();
 
   form.addEventListener('submit', onSubmit);
+  form.addEventListener('input', clearResult);
 }
 
 /* ---------------- Form helpers ---------------- */
@@ -51,6 +50,7 @@ function initGenderSeg() {
     const gender = btn.dataset.value;
     setGenderPressed(seg, gender);
     clearGenderError();
+    clearResult();
   });
 }
 
@@ -78,6 +78,10 @@ function resetCalculatorView(form) {
   clearGenderError();
   clearFieldErrors(form, FIELD_IDS);
 
+  clearResult();
+}
+
+function clearResult() {
   const empty = document.getElementById('result-empty');
   const content = document.getElementById('result-content');
   if (empty) empty.hidden = false;
@@ -101,12 +105,14 @@ function onSubmit(event) {
     height: fd.get('height'),
     neck: fd.get('neck'),
     waist: fd.get('waist'),
+    hip: fd.get('hip'),
     targetWeight: fd.get('targetWeight'),
     activityLevel: fd.get('activityLevel') || 'moderate',
   };
 
   clearFieldErrors(form, FIELD_IDS);
   clearGenderError();
+  clearResult();
   const { ok, errors, values: clean } = validateCalculatorForm(values);
 
   if (!ok) {
@@ -136,6 +142,7 @@ function onSubmit(event) {
       savePlan(plan, baselineLog);
       renderResult(assessment);
     } catch (err) {
+      if (err.field) showFieldError(document.getElementById(err.field), err.message);
       toast(err.message || 'Terjadi kesalahan saat menghitung.', 'danger');
     } finally {
       setLoading(false);
@@ -193,20 +200,20 @@ function renderResult(assessment) {
 /* -------- Assessment card -------- */
 
 function assessmentCard(a) {
-  const markerPct = clamp(((a.bodyFat - BF_MIN) / (BF_MAX - BF_MIN)) * 100, 0, 100);
-  const bmiPct = clamp(((a.bmi - BMI_MIN) / (BMI_MAX - BMI_MIN)) * 100, 0, 100);
+  const markerPct = spectrumPosition(a.bodyFat, BOUNDARIES);
+  const bmiRanges = BMI_SEGMENTS.map((s, i) => ({ min: i === 0 ? BMI_MIN : BMI_SEGMENTS[i - 1].to, max: s.to }));
+  const bmiPct = spectrumPosition(a.bmi, bmiRanges);
 
   const segments = BOUNDARIES
     .map((s) => {
-      const width = ((Math.min(s.max, BF_MAX) - Math.max(s.min, BF_MIN)) / (BF_MAX - BF_MIN)) * 100;
+      const width = 100 / BOUNDARIES.length;
       return `<span class="spectrum-segment" style="width:${width.toFixed(2)}%;background:${categoryColor(s.category)}"></span>`;
     })
     .join('');
 
   const bmiBar = BMI_SEGMENTS
-    .map((s, i) => {
-      const prev = i === 0 ? BMI_MIN : BMI_SEGMENTS[i - 1].to;
-      const width = ((s.to - prev) / (BMI_MAX - BMI_MIN)) * 100;
+    .map((s) => {
+      const width = 100 / BMI_SEGMENTS.length;
       return `<span class="spectrum-segment" style="width:${width.toFixed(2)}%;background:${s.color}"></span>`;
     })
     .join('');
@@ -218,7 +225,7 @@ function assessmentCard(a) {
           <p class="bf-eyebrow">Persentase Lemak Tubuh</p>
           <div class="big-bf-number">${fmtNum(a.bodyFat)}<small>%</small></div>
           <div class="badge-row">
-            <span class="badge ${categoryBadgeClass(a.category)}">${icon('body-fat', { size: 14 })}${escapeHtml(a.categoryLabel)}</span>
+            <span class="badge ${categoryBadgeClass(a.category)}">${icon('body-fat', { size: 14 })}Lemak tubuh: ${escapeHtml(a.categoryLabel)}</span>
             <span class="badge badge-info">BMI ${fmtNum(a.bmi, 1)} · ${escapeHtml(a.bmiLabel)}</span>
             <span class="badge badge-neutral">Massa lemak ${fmtNum(a.fatMass, 1)} kg</span>
           </div>
@@ -226,7 +233,7 @@ function assessmentCard(a) {
         <div class="target-panel">
           <div class="tp-label">Target</div>
           <div class="tp-value">${a.targetWeight != null ? `${fmtNum(a.targetWeight, 1)} kg` : '—'}</div>
-          <div class="tp-note">Berat ideal Anda ± 2,2 kg</div>
+          <div class="tp-note">${a.targetBodyFat != null ? `Target body fat ${fmtNum(a.targetBodyFat)}% · ` : ''}${escapeHtml(a.timeline)}</div>
         </div>
       </div>
 
@@ -242,9 +249,9 @@ function assessmentCard(a) {
 
       <div class="metric-grid">
         ${metricCard('Tinggi', `${fmtNum(a.height, 1)} cm`, 'ruler')}
-        ${metricCard('BMI', `${fmtNum(a.bmi, 1)} kg/m²`, 'flame')}
+        ${metricCard('BMR', `${fmtKcal(a.bmr)} kkal`, 'flame')}
         ${metricCard('Kebutuhan Kalori (TDEE)', `${fmtKcal(a.tdee)} kkal`, 'zap')}
-        ${metricCard('Berat Badan Ideal', a.targetWeight != null ? `${fmtNum(a.targetWeight, 1)} kg` : '—', 'scale')}
+        ${metricCard('Target Berat', a.targetWeight != null ? `${fmtNum(a.targetWeight, 1)} kg` : '—', 'scale')}
       </div>
 
       <div class="bmi-spotlight">
@@ -256,12 +263,11 @@ function assessmentCard(a) {
           <div class="bmi-bar">${bmiBar}<span class="bmi-marker" style="left:${bmiPct.toFixed(2)}%"></span></div>
           <div class="bmi-ticks">
             <span>&lt; 18,5<br>Kurus</span>
-            <span>18,5 – 22,9<br>Normal</span>
-            <span>23 – 24,9<br>Overweight</span>
-            <span>25 – 29,9<br>Obesitas I</span>
-            <span>≥ 30<br>Obesitas II</span>
+            <span>18,5 – 24,9<br>Normal</span>
+            <span>25 – 29,9<br>Berlebih</span>
+            <span>≥ 30<br>Obesitas</span>
           </div>
-          <p class="result-note">${icon('info', { size: 14 })} Hasil ini adalah estimasi dan dapat bervariasi tergantung metode pengukuran yang digunakan.</p>
+          <p class="result-note">${icon('info', { size: 14 })} Estimasi body fat: ${escapeHtml(a.formula)}. Bukan diagnosis medis.</p>
         </div>
       </div>
       ${warningsHtml(a.warnings)}
@@ -285,17 +291,9 @@ function warningsHtml(warnings) {
       (w) => `
         <div class="alert result-warning ${w.severity === 'danger' ? 'alert-danger' : 'alert-warning'}" role="note">
           <span class="alert-icon">${icon(w.severity === 'danger' ? 'alert-triangle' : 'info', { size: 18 })}</span>
-          <div class="alert-body"><strong>${escapeHtml(w.title)}</strong> ${escapeHtml(w.message)}</div>
+          <div class="alert-body">${escapeHtml(w.message)}</div>
         </div>
       `,
     )
     .join('');
-}
-
-
-
-/* ---------------- helpers ---------------- */
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
