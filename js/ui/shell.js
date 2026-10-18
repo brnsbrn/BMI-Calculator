@@ -4,15 +4,13 @@
 
 import { icon } from './icons.js?v=kaltim-assets-4';
 import { openModal, confirmDialog, toast } from './modal.js';
-import { download, parseImportFile, applyImport } from '../export-import.js';
-import { resetState, storageCorrupt } from '../state.js';
-import { isPersistent } from '../storage.js';
+import { download, parseImportFile, applyImport } from '../export-import.js?v=calculator-only-14';
+import { resetState, storageCorrupt } from '../state.js?v=calculator-only-14';
+import { isPersistent } from '../storage.js?v=calculator-only-14';
+import { fmtNum, escapeHtml } from '../format.js';
 
 const PAGES = [
   { page: 'calculator', label: 'Kalkulator', icon: 'calculator', href: 'index.html' },
-  { page: 'plan', label: 'Rencana', icon: 'target', href: 'plan.html' },
-  { page: 'progress', label: 'Progres', icon: 'activity', href: 'progress.html' },
-  { page: 'checkin', label: 'Check-in', icon: 'calendar', href: 'check-in.html' },
 ];
 
 const CURRENT_PAGE = document.body.dataset.page || 'calculator';
@@ -141,7 +139,7 @@ function renderFooter() {
     </div>`;
 }
 
-/* Theme preference is separate from measurement and plan data. */
+/* Theme preference is separate from measurement data. */
 function readTheme() {
   try {
     return localStorage.getItem('bodyfit-theme') === 'dark' ? 'dark' : 'light';
@@ -174,9 +172,11 @@ function bindHeaderActions() {
     openModal({
       title: 'Tentang BodyFit Kaltim',
       body: `
-        <p>BodyFit Kaltim membantu Anda mengenali komposisi tubuh melalui estimasi lemak tubuh, indeks massa tubuh (BMI), dan kebutuhan energi harian.</p>
-        <p>Hasil pengukuran menjadi dasar rencana nutrisi dan aktivitas. Halaman Progres serta Check-in membantu mencatat perkembangan dari waktu ke waktu.</p>
-        <p>Data tersimpan di browser pada perangkat ini. Web ini tidak menggunakan akun pengguna atau database.</p>
+        <p>BodyFit Kaltim menghitung indeks massa tubuh (BMI) dari berat dan tinggi badan untuk orang dewasa usia 18–80 tahun. Kategori menggunakan batas WHO: kurang dari 18,5; normal 18,5 hingga kurang dari 25; berlebih 25 hingga kurang dari 30; obesitas mulai 30.</p>
+        <p>Estimasi lemak tubuh menggunakan RFM dari tinggi, pinggang, dan jenis kelamin; jika pinggang kosong, digunakan rumus Deurenberg dari BMI, umur, dan jenis kelamin. Panggul digunakan untuk rasio pinggang-panggul. Semua pengukuran lingkar bersifat opsional.</p>
+        <p>BMR adalah estimasi energi saat istirahat, bukan kebutuhan kalori harian. Target otomatis mengikuti rentang BMI normal, bukan estimasi lemak tubuh.</p>
+        <p>Hasil terakhir tersimpan di browser pada perangkat ini dan dapat diekspor atau diimpor. Tidak memerlukan akun atau database.</p>
+        <p>Referensi: <a href="https://www.who.int/data/gho/data/themes/topics/indicator-groups/indicator-group-details/GHO/bmi-among-adults" target="_blank" rel="noopener noreferrer">WHO (BMI)</a>, <a href="https://pubmed.ncbi.nlm.nih.gov/30030479/" target="_blank" rel="noopener noreferrer">RFM</a>, <a href="https://pubmed.ncbi.nlm.nih.gov/2043597/" target="_blank" rel="noopener noreferrer">Deurenberg</a>.</p>
         <p>Hasil perhitungan merupakan estimasi, bukan diagnosis medis.</p>`,
     });
   });
@@ -238,8 +238,8 @@ function onExport() {
 async function onImport() {
   const state = await importFlow();
   if (state === 'done') {
-    toast('Data berhasil diimpor. Halaman dimuat ulang…', 'success');
-    setTimeout(() => window.location.reload(), 700);
+    window.dispatchEvent(new Event('bodyfit:calculator-change'));
+    toast('Data kalkulator berhasil diimpor.', 'success');
   }
 }
 
@@ -247,8 +247,8 @@ function onReset() {
   confirmReset().then((yes) => {
     if (!yes) return;
     resetState();
-    toast('Semua data telah dihapus.', 'success');
-    setTimeout(() => (window.location.href = './'), 500);
+    window.dispatchEvent(new Event('bodyfit:calculator-change'));
+    toast('Data kalkulator telah dihapus.', 'success');
   });
 }
 
@@ -256,7 +256,7 @@ function confirmReset() {
   return confirmDialog({
     title: 'Reset semua data?',
     body: `
-      <p>Tindakan ini akan <strong>menghapus seluruh data</strong>: hasil kalkulasi, rencana, riwayat check-in, dan status latihan dari browser Anda.</p>
+      <p>Tindakan ini akan <strong>menghapus hasil kalkulator</strong> yang tersimpan di browser Anda.</p>
       <p>Tindakan ini tidak dapat dibatalkan. Pertimbangkan untuk <strong>mengekspor backup</strong> terlebih dahulu.</p>
     `,
     confirmText: 'Hapus semua data',
@@ -342,8 +342,8 @@ function importFlow() {
         status.innerHTML = `<div class="alert alert-danger" style="margin-top:14px"><span class="alert-icon">${icon('alert-triangle', { size: 18 })}</span><div class="alert-body"><strong>Gagal menyimpan</strong> ${result.error}</div></div>`;
         return;
       }
-      modal.close();
       resolve('done');
+      modal.close();
     });
 
     dialog.addEventListener('click', (e) => {
@@ -356,19 +356,16 @@ function previewHtml(p) {
   const rows = [
     ['Data assessment', p.hasAssessment ? 'Tersedia' : 'Kosong'],
     ['Jenis kelamin', p.gender ?? '—'],
-    ['Body fat', p.bodyFat != null ? `${p.bodyFat}%` : '—'],
+    ['BMI', p.bmi != null ? fmtNum(p.bmi, 2) : '—'],
+    ['Estimasi lemak tubuh', p.bodyFat != null ? `${fmtNum(p.bodyFat)}%` : '—'],
     ['Target berat', p.targetWeight != null ? `${p.targetWeight} kg` : '—'],
-    ['Rencana aktif', p.hasPlan ? `Ya (Minggu ${p.currentWeek})` : 'Tidak'],
-    ['Jumlah check-in', String(p.checkinCount)],
-    ['Check-in terakhir', p.lastCheckin ?? '—'],
-    ['Berat terakhir', p.lastWeight != null ? `${p.lastWeight} kg` : '—'],
-    ['Titik data grafik', String(p.progressCount)],
+    ['Berat badan', p.weight != null ? `${fmtNum(p.weight)} kg` : '—'],
   ];
   return `
     <div class="import-preview" style="margin-top:14px">
       <table>
         <tbody>
-          ${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}
+          ${rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}
         </tbody>
       </table>
     </div>

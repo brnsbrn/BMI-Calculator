@@ -1,138 +1,52 @@
-/**
- * storage.js — persistence ke localStorage.
- * Semua data disimpan sebagai satu root state dalam satu key.
- */
-
+/** Latest calculator result with in-memory fallback when storage is blocked. */
+import { validateCalculatorForm } from './validation.js?v=calculator-only-14';
+import { buildAssessment } from './calculator/assessment.js?v=calculator-only-14';
 export const STORAGE_KEY = 'bodyfit_state';
+let persistent = true;
+let fallback = null;
+export function isPersistent() { return persistent; }
+export function createInitialState() { return { version: 2, assessment: null }; }
 
-/**
- * Tes ketersediaan localStorage (bisa diblokir oleh kebijakan privasi).
- * Jika tidak tersedia, fallback in-memory — aplikasi tetap berfungsi
- * untuk sesi berjalan (tanpa persistence antar-kunjungan).
- */
-let available = true;
-let checked = false;
-
-function localStorageReady() {
-  if (!checked) {
-    checked = true;
-    try {
-      const probe = '__bodyfit_probe__';
-      localStorage.setItem(probe, '1');
-      localStorage.removeItem(probe);
-    } catch {
-      available = false;
-    }
+/** Accept old backups, keep only calculator inputs, and recalculate derived values. */
+export function normalizeState(raw) {
+  if (!raw || typeof raw !== 'object' || ![1, 2].includes(raw.version)) {
+    throw new RangeError('Versi atau struktur backup tidak didukung.');
   }
-  return available;
-}
-
-const memory = new Map();
-
-function safeGetItem(key) {
-  if (!localStorageReady()) return memory.get(key) ?? null;
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return memory.get(key) ?? null;
+  if (raw.assessment === null) return createInitialState();
+  if (!raw.assessment || typeof raw.assessment !== 'object') {
+    throw new RangeError('Data kalkulator pada backup tidak valid.');
   }
-}
-
-function safeSetItem(key, value) {
-  if (!localStorageReady()) {
-    memory.set(key, value);
-    return true;
-  }
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch {
-    memory.set(key, value);
-    return true;
-  }
-}
-
-function safeRemoveItem(key) {
-  if (!localStorageReady()) {
-    memory.delete(key);
-    return;
-  }
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    memory.delete(key);
-  }
-}
-
-export function isPersistent() {
-  return localStorageReady();
-}
-
-export function createInitialState() {
-  return {
-    version: 1,
-    assessment: null,
-    recommendation: null,
-    plan: null,
-    progress: [],
-    checkins: [],
-    workoutStatus: {},
-    preferences: {
-      unit: 'metric',
-    },
-  };
+  const source = raw.assessment;
+  const result = validateCalculatorForm({
+    ...source,
+    targetWeight: source.targetWeightManual === true ? source.targetWeight : null,
+  });
+  if (!result.ok) throw new RangeError('Data pengukuran pada backup tidak valid.');
+  return { version: 2, assessment: buildAssessment(result.values) };
 }
 
 export function saveState(state) {
-  safeSetItem(STORAGE_KEY, JSON.stringify(state));
+  fallback = JSON.stringify(normalizeState(state));
+  try { localStorage.setItem(STORAGE_KEY, fallback); }
+  catch { persistent = false; }
   return { ok: true };
 }
 
 export function loadState() {
-  const raw = safeGetItem(STORAGE_KEY);
-  if (!raw) {
-    return { state: createInitialState(), stored: false };
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    return { state: normalize(parsed), stored: true };
-  } catch {
-    return { state: createInitialState(), stored: false, corrupt: true };
-  }
+  let raw = fallback;
+  try { if (persistent) raw = localStorage.getItem(STORAGE_KEY) ?? fallback; }
+  catch { persistent = false; }
+  if (!raw) return { state: createInitialState(), stored: false };
+  try { return { state: normalizeState(JSON.parse(raw)), stored: true }; }
+  catch { return { state: createInitialState(), stored: false, corrupt: true }; }
 }
 
 export function clearState() {
-  safeRemoveItem(STORAGE_KEY);
+  fallback = null;
+  try { localStorage.removeItem(STORAGE_KEY); }
+  catch { persistent = false; }
 }
 
 export function exportJson(state) {
-  return JSON.stringify(
-    {
-      app: 'bodyfit',
-      exportedAt: new Date().toISOString(),
-      state,
-    },
-    null,
-    2,
-  );
-}
-
-/**
- * Normalisasi state dari localStorage (melengkapi field yang hilang
- * dengan nilai default tanpa menghapus data valid).
- */
-function normalize(raw) {
-  const initial = createInitialState();
-  const base = { ...initial, ...raw };
-
-  base.preferences = { ...initial.preferences, ...(raw.preferences ?? {}) };
-
-  if (!Array.isArray(base.progress)) base.progress = [];
-  if (!Array.isArray(base.checkins)) base.checkins = [];
-  if (!base.workoutStatus || typeof base.workoutStatus !== 'object') base.workoutStatus = {};
-  if (base.plan && typeof base.plan === 'object') {
-    base.plan.currentWeek = Number(base.plan.currentWeek) || 1;
-  }
-
-  return base;
+  return JSON.stringify({ app: 'bodyfit', exportedAt: new Date().toISOString(), state: normalizeState(state) }, null, 2);
 }

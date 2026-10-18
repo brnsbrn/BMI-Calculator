@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Kalkulator komposisi tubuh BodyFit Kaltim untuk menghitung body fat, BMI, BMR, TDEE, target berat, dan rekomendasi nutrisi serta latihan personal.">
-  <title>BodyFit — Kalkulator Komposisi Tubuh</title>
+  <meta name="description" content="Kalkulator BMI BodyFit Kaltim berdasarkan berat dan tinggi badan, dilengkapi estimasi lemak tubuh, BMR, rasio pinggang-panggul, dan target berat.">
+  <title>BodyFit — Kalkulator BMI</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,11 +16,8 @@
   <link rel="stylesheet" href="css/forms.css">
   <link rel="stylesheet" href="css/calculator.css">
   <link rel="stylesheet" href="css/modal.css">
-  <link rel="stylesheet" href="css/plan.css">
-  <link rel="stylesheet" href="css/progress.css">
-  <link rel="stylesheet" href="css/check-in.css">
   <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/kaltim-theme.css?v=bmi-safety-13">
+  <link rel="stylesheet" href="css/kaltim-theme.css?v=calculator-only-14">
 </head>
 <body data-page="calculator">
   <a class="skip-link" href="#main-content">Langsung ke konten</a>
@@ -32,8 +29,8 @@
         <div class="page-header hero-kaltim">
           <img class="hero-orangutan" src="assets/images/kaltim/header/orangutan.png" alt="" aria-hidden="true">
           <div class="hero-copy">
-            <h1>Kalkulator Komposisi Tubuh</h1>
-            <p class="subtitle">Hitung persentase lemak tubuh, indeks massa tubuh, serta data komposisi tubuh Anda dengan mudah dan akurat untuk hidup lebih sehat.</p>
+            <h1>Kalkulator BMI</h1>
+            <p class="subtitle">Kenali indeks massa tubuh, estimasi lemak tubuh, dan target berat Anda dari pengukuran sederhana.</p>
           </div>
           <p class="hero-script" aria-hidden="true"><img src="assets/images/kaltim/header/sehat-bersama-kaltim.png" alt=""></p>
           <img class="hero-landscape" src="assets/images/kaltim/header/bridge-landscape.png" alt="" aria-hidden="true">
@@ -66,7 +63,7 @@
             <div class="input-group">
               <label class="input-label" for="age">Umur</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="age" name="age" min="18" max="80" step="1" inputmode="numeric" autocomplete="off">
+                <input class="form-control" type="number" id="age" name="age" min="18" max="80" step="1" inputmode="numeric" autocomplete="off" required>
                 <span class="unit-suffix" aria-hidden="true">Tahun</span>
               </div>
               <p class="field-error" id="age-error" hidden></p>
@@ -75,7 +72,7 @@
             <div class="input-group">
               <label class="input-label" for="weight">Berat Badan</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="weight" name="weight" min="30" max="300" step="0.1" inputmode="decimal" autocomplete="off">
+                <input class="form-control" type="number" id="weight" name="weight" min="30" max="300" step="0.1" inputmode="decimal" autocomplete="off" required>
                 <span class="unit-suffix" aria-hidden="true">kg</span>
               </div>
               <p class="field-error" id="weight-error" hidden></p>
@@ -84,21 +81,14 @@
             <div class="input-group">
               <label class="input-label" for="height">Tinggi Badan</label>
               <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="height" name="height" min="120" max="250" step="0.1" inputmode="decimal" autocomplete="off">
+                <input class="form-control" type="number" id="height" name="height" min="120" max="250" step="0.1" inputmode="decimal" autocomplete="off" aria-describedby="height-note" required>
                 <span class="unit-suffix" aria-hidden="true">cm</span>
               </div>
               <p class="field-error" id="height-error" hidden></p>
+              <p class="input-note" id="height-note">Tinggi badan wajib untuk menghitung BMI: berat (kg) ÷ tinggi (m)². Untuk usia 18–80 tahun.</p>
             </div>
 
             <div class="form-row">
-              <div class="input-group">
-                <label class="input-label" for="neck">Lingkar Leher</label>
-                <div class="form-control-wrap with-unit">
-                  <input class="form-control" type="number" id="neck" name="neck" min="20" max="80" step="0.1" inputmode="decimal" autocomplete="off">
-                  <span class="unit-suffix" aria-hidden="true">cm</span>
-                </div>
-                <p class="field-error" id="neck-error" hidden></p>
-              </div>
               <div class="input-group">
                 <label class="input-label" for="waist">Lingkar Pinggang</label>
                 <div class="form-control-wrap with-unit">
@@ -107,17 +97,16 @@
                 </div>
                 <p class="field-error" id="waist-error" hidden></p>
               </div>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label" for="hip">Lingkar Panggul</label>
-              <div class="form-control-wrap with-unit">
-                <input class="form-control" type="number" id="hip" name="hip" min="40" max="200" step="0.1" inputmode="decimal" autocomplete="off">
-                <span class="unit-suffix" aria-hidden="true">cm</span>
+              <div class="input-group">
+                <label class="input-label" for="hip">Lingkar Panggul</label>
+                <div class="form-control-wrap with-unit">
+                  <input class="form-control" type="number" id="hip" name="hip" min="40" max="200" step="0.1" inputmode="decimal" autocomplete="off">
+                  <span class="unit-suffix" aria-hidden="true">cm</span>
+                </div>
+                <p class="field-error" id="hip-error" hidden></p>
               </div>
-              <p class="field-error" id="hip-error" hidden></p>
-              <p class="input-note">Data lingkar opsional. Panggul dicatat sebagai pengukuran tambahan.</p>
             </div>
+            <p class="input-note">Data lingkar opsional dan tidak mengubah BMI. Ukur pinggang di atas tulang panggul setelah embusan napas normal, serta panggul pada bagian terlebar.</p>
 
             <div>
               <div class="input-group">
@@ -127,23 +116,13 @@
                   <span class="unit-suffix" aria-hidden="true">kg</span>
                 </div>
                 <p class="field-error" id="targetWeight-error" hidden></p>
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="activityLevel">Aktivitas</label>
-                <select class="form-control" id="activityLevel" name="activityLevel">
-                  <option value="sedentary">Jarang olahraga</option>
-                  <option value="light">Ringan (1–2x/minggu)</option>
-                  <option value="moderate" selected>Sedang (3–4x/minggu)</option>
-                  <option value="active">Aktif (5–6x/minggu)</option>
-                  <option value="very_active">Sangat aktif</option>
-                </select>
-                <p class="field-error" id="activityLevel-error" hidden></p>
+                <p class="input-note">Opsional. Jika kosong, target mengikuti batas terdekat rentang BMI normal atau mempertahankan berat normal saat ini.</p>
               </div>
             </div>
 
             <div class="result-actions" style="margin-top:22px">
               <button type="submit" id="btn-calculate" class="btn btn-primary btn-lg">
-                <span class="btn-default" data-icon="calculator">Hitung Komposisi Tubuh</span>
+                <span class="btn-default" data-icon="calculator">Hitung BMI</span>
                 <span class="btn-loading" hidden><span class="spinner" aria-hidden="true"></span> Menghitung…</span>
               </button>
             </div>
@@ -154,11 +133,11 @@
             <div class="card empty-state result-placeholder" id="result-empty">
               <div class="empty-icon" data-icon="calculator" aria-hidden="true"></div>
               <h2>Belum ada hasil</h2>
-              <p>Isi data tubuh Anda lalu klik Hitung untuk melihat persentase lemak tubuh, BMI, kebutuhan kalori, dan target berat.</p>
+              <p>Isi data tubuh Anda lalu klik Hitung BMI untuk melihat BMI, estimasi lemak tubuh, dan target berat.</p>
               <ul class="empty-features" role="list">
                 <li data-icon="ruler">Input pengukuran utama</li>
-                <li data-icon="activity">Ringkasan kebutuhan energi</li>
-                <li data-icon="target">Target dan rekomendasi personal</li>
+                <li data-icon="activity">BMI dan pengukuran tambahan</li>
+                <li data-icon="target">Rentang normal dan target berat</li>
               </ul>
             </div>
             <div id="result-content" hidden></div>
@@ -188,8 +167,7 @@
   </div>
 
   <div id="modal-root"></div>
-  <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
   <script defer src="js/runtime-notice.js"></script>
-  <script type="module" src="js/app.js?v=bmi-safety-13"></script>
+  <script type="module" src="js/app.js?v=calculator-only-14"></script>
 </body>
 </html>

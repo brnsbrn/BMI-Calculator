@@ -1,299 +1,176 @@
-/**
- * calculator-ui.js — halaman Kalkulator: form, perhitungan, hasil.
- */
-
-import { buildAssessment } from '../calculator/assessment.js?v=bmi-safety-13';
-import { BOUNDARIES, categoryColor, categoryBadgeClass, categoryLabel } from '../calculator/body-fat-classifier.js';
-import { buildRecommendation } from '../recommendation/engine.js?v=bmi-safety-13';
+/** Calculator form and results. */
+import { buildAssessment } from '../calculator/assessment.js?v=calculator-only-14';
 import { spectrumPosition } from './spectrum.js';
-import {
-  setAssessment,
-  setRecommendation,
-  createPlanFromRecommendation,
-  savePlan,
-} from '../state.js';
-import { validateCalculatorForm, showFieldError, clearFieldErrors } from '../validation.js?v=male-fix-12';
+import { getState, setAssessment } from '../state.js?v=calculator-only-14';
+import { validateCalculatorForm, showFieldError, clearFieldErrors } from '../validation.js?v=calculator-only-14';
 import { icon } from './icons.js';
 import { toast } from './modal.js';
 import { fmtNum, fmtKcal, escapeHtml } from '../format.js';
 
-const BMI_MIN = 12;
-
-const BMI_SEGMENTS = [
-  { to: 18.5, label: 'Kurang', color: '#3b82f6' },
-  { to: 25, label: 'Normal', color: '#14b8a6' },
-  { to: 30, label: 'Berlebih', color: '#f59e0b' },
-  { to: 45, label: 'Obesitas', color: '#dc2626' },
+const FIELD_IDS = ['age', 'weight', 'height', 'waist', 'hip', 'targetWeight'];
+const BMI_RANGES = [
+  { min: 12, max: 18.5, color: '#3b82f6' },
+  { min: 18.5, max: 25, color: '#14b8a6' },
+  { min: 25, max: 30, color: '#f59e0b' },
+  { min: 30, max: 45, color: '#dc2626' },
 ];
-
-const FIELD_IDS = ['gender', 'age', 'weight', 'height', 'neck', 'waist', 'hip', 'targetWeight', 'activityLevel'];
 
 export function initCalculator() {
   const form = document.getElementById('calculator-form');
   if (!form) return;
-
-  resetCalculatorView(form);
-  initGenderSeg();
-
-  form.addEventListener('submit', onSubmit);
-  form.addEventListener('input', clearResult);
-}
-
-/* ---------------- Form helpers ---------------- */
-
-function initGenderSeg() {
-  const seg = document.getElementById('gender-seg');
-  if (!seg) return;
-  seg.addEventListener('click', (e) => {
-    const btn = e.target.closest('.seg-option');
-    if (!btn) return;
-    const gender = btn.dataset.value;
-    setGenderPressed(seg, gender);
+  restoreCalculator(form);
+  window.addEventListener('bodyfit:calculator-change', () => restoreCalculator(form));
+  document.getElementById('gender-seg')?.addEventListener('click', (event) => {
+    const button = event.target.closest('.seg-option');
+    if (!button) return;
+    setGenderPressed(button.dataset.value);
     clearGenderError();
     clearResult();
   });
+  form.addEventListener('input', () => {
+    clearFieldErrors(form, FIELD_IDS);
+    clearResult();
+  });
+  form.addEventListener('submit', onSubmit);
 }
 
-function setGenderPressed(seg, gender) {
-  seg.querySelectorAll('.seg-option').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === gender)));
-}
-
-function readGender(seg) {
-  const active = seg ? seg.querySelector('.seg-option[aria-pressed="true"]') : null;
-  return (active && active.dataset.value) || null;
-}
-
-function resetCalculatorView(form) {
+function restoreCalculator(form) {
   form.reset();
-  form.querySelectorAll('input').forEach((input) => {
-    input.value = '';
-    input.defaultValue = '';
-    input.removeAttribute('value');
-    input.removeAttribute('aria-invalid');
-    input.classList.remove('invalid');
-  });
-  document.querySelectorAll('#gender-seg .seg-option').forEach((button) => {
-    button.setAttribute('aria-pressed', 'false');
-  });
-  clearGenderError();
+  FIELD_IDS.forEach((id) => { form.elements[id].value = ''; });
+  setGenderPressed(null);
   clearFieldErrors(form, FIELD_IDS);
-
+  clearGenderError();
   clearResult();
+  // Restore validated calculator data, including data from an imported backup.
+  const saved = getState().assessment;
+  if (saved) {
+    FIELD_IDS.forEach((id) => {
+      form.elements[id].value = id === 'targetWeight'
+        ? (saved.targetWeightManual ? saved.targetWeight : '')
+        : (saved[id] ?? '');
+    });
+    setGenderPressed(saved.gender);
+    renderResult(saved);
+  }
+}
+
+function setGenderPressed(gender) {
+  document.querySelectorAll('#gender-seg .seg-option').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.value === gender));
+  });
 }
 
 function clearResult() {
   const empty = document.getElementById('result-empty');
   const content = document.getElementById('result-content');
   if (empty) empty.hidden = false;
-  if (content) {
-    content.hidden = true;
-    content.innerHTML = '';
-  }
+  if (content) { content.hidden = true; content.innerHTML = ''; }
 }
-
-/* ---------------- Submit / calculate ---------------- */
 
 function onSubmit(event) {
   event.preventDefault();
-
   const form = event.currentTarget;
-  const fd = new FormData(form);
-  const values = {
-    gender: readGender(document.getElementById('gender-seg')) || fd.get('gender') || null,
-    age: fd.get('age'),
-    weight: fd.get('weight'),
-    height: fd.get('height'),
-    neck: fd.get('neck'),
-    waist: fd.get('waist'),
-    hip: fd.get('hip'),
-    targetWeight: fd.get('targetWeight'),
-    activityLevel: fd.get('activityLevel') || 'moderate',
-  };
-
+  const data = new FormData(form);
+  const values = Object.fromEntries(FIELD_IDS.map((id) => [id, data.get(id)]));
+  values.gender = document.querySelector('#gender-seg .seg-option[aria-pressed="true"]')?.dataset.value;
   clearFieldErrors(form, FIELD_IDS);
   clearGenderError();
   clearResult();
-  const { ok, errors, values: clean } = validateCalculatorForm(values);
-
-  if (!ok) {
-    for (const [field, message] of Object.entries(errors)) {
-      if (field === 'gender') {
-        showGenderError(message);
-        continue;
-      }
-      const input = document.getElementById(field);
-      if (input) showFieldError(input, message);
+  const result = validateCalculatorForm(values);
+  if (!result.ok) {
+    for (const [field, message] of Object.entries(result.errors)) {
+      if (field === 'gender') showGenderError(message);
+      else showFieldError(form.elements[field], message);
     }
     toast('Periksa kembali isian yang ditandai.', 'danger');
-    document.getElementById('result-empty')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    (result.errors.gender ? document.querySelector('#gender-seg button') : form.querySelector('[aria-invalid="true"]'))?.focus();
     return;
   }
-
-  setLoading(true);
-
-  // Biarkan state "Menghitung…" terlihat sebentar lalu komputasi.
-  setTimeout(() => {
-    try {
-      const assessment = buildAssessment({ ...clean, activityLevel: clean.activityLevel || 'moderate' });
-      const recommendation = buildRecommendation(assessment);
-      setAssessment(assessment);
-      setRecommendation(recommendation);
-      const { plan, baselineLog } = createPlanFromRecommendation(assessment, recommendation);
-      savePlan(plan, baselineLog);
-      renderResult(assessment);
-    } catch (err) {
-      if (err.field) showFieldError(document.getElementById(err.field), err.message);
-      toast(err.message || 'Terjadi kesalahan saat menghitung.', 'danger');
-    } finally {
-      setLoading(false);
+  try {
+    const assessment = buildAssessment(result.values);
+    setAssessment(assessment);
+    renderResult(assessment);
+    document.getElementById('result-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    if (error.field) {
+      showFieldError(form.elements[error.field], error.message);
+      form.elements[error.field]?.focus();
     }
-  }, 120);
-}
-
-function setLoading(loading) {
-  const btn = document.getElementById('btn-calculate');
-  if (!btn) return;
-  const defaultEl = btn.querySelector('.btn-default');
-  const loadingEl = btn.querySelector('.btn-loading');
-  if (defaultEl) defaultEl.hidden = loading;
-  if (loadingEl) loadingEl.hidden = !loading;
-  btn.disabled = loading;
+    toast(error.message || 'Terjadi kesalahan saat menghitung.', 'danger');
+  }
 }
 
 function showGenderError(message) {
   const seg = document.getElementById('gender-seg');
-  const errorEl = document.getElementById('gender-error');
-  if (seg) {
-    seg.classList.add('invalid');
-    seg.setAttribute('aria-invalid', 'true');
-  }
-  if (errorEl) {
-    errorEl.textContent = message;
-    errorEl.hidden = false;
-    errorEl.setAttribute('role', 'alert');
-  }
+  seg?.classList.add('invalid');
+  seg?.setAttribute('aria-invalid', 'true');
+  seg?.setAttribute('aria-describedby', 'gender-error');
+  const error = document.getElementById('gender-error');
+  if (error) { error.textContent = message; error.hidden = false; error.setAttribute('role', 'alert'); }
 }
 
 function clearGenderError() {
   const seg = document.getElementById('gender-seg');
-  const errorEl = document.getElementById('gender-error');
   seg?.classList.remove('invalid');
   seg?.removeAttribute('aria-invalid');
-  if (errorEl) errorEl.hidden = true;
+  seg?.removeAttribute('aria-describedby');
+  const error = document.getElementById('gender-error');
+  if (error) error.hidden = true;
 }
 
-/* ---------------- Result rendering ---------------- */
-
-function renderResult(assessment) {
+function renderResult(a) {
   const empty = document.getElementById('result-empty');
   const content = document.getElementById('result-content');
-  const panel = document.getElementById('result-panel');
   if (!content) return;
   if (empty) empty.hidden = true;
-
+  const marker = spectrumPosition(a.bmi, BMI_RANGES);
+  const difference = a.weightDiff === 0 ? 'Pertahankan berat saat ini'
+    : `${a.weightDiff > 0 ? 'Selisih turun' : 'Selisih naik'} ${fmtNum(Math.abs(a.weightDiff), 1)} kg`;
   content.hidden = false;
-  content.innerHTML = assessmentCard(assessment);
-
-  panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/* -------- Assessment card -------- */
-
-function assessmentCard(a) {
-  const markerPct = spectrumPosition(a.bodyFat, BOUNDARIES);
-  const bmiRanges = BMI_SEGMENTS.map((s, i) => ({ min: i === 0 ? BMI_MIN : BMI_SEGMENTS[i - 1].to, max: s.to }));
-  const bmiPct = spectrumPosition(a.bmi, bmiRanges);
-
-  const segments = BOUNDARIES
-    .map((s) => {
-      const width = 100 / BOUNDARIES.length;
-      return `<span class="spectrum-segment" style="width:${width.toFixed(2)}%;background:${categoryColor(s.category)}"></span>`;
-    })
-    .join('');
-
-  const bmiBar = BMI_SEGMENTS
-    .map((s) => {
-      const width = 100 / BMI_SEGMENTS.length;
-      return `<span class="spectrum-segment" style="width:${width.toFixed(2)}%;background:${s.color}"></span>`;
-    })
-    .join('');
-
-  return `
-    <section class="card result-card animate-fade-up" aria-label="Hasil komposisi tubuh">
+  content.innerHTML = `
+    <section class="card result-card animate-fade-up" aria-label="Hasil kalkulator BMI">
       <div class="big-summary">
         <div>
-          <p class="bf-eyebrow">Persentase Lemak Tubuh</p>
-          <div class="big-bf-number">${fmtNum(a.bodyFat)}<small>%</small></div>
-          <div class="badge-row">
-            <span class="badge ${categoryBadgeClass(a.category)}">${icon('body-fat', { size: 14 })}Lemak tubuh: ${escapeHtml(a.categoryLabel)}</span>
-            <span class="badge badge-info">BMI ${fmtNum(a.bmi, 1)} · ${escapeHtml(a.bmiLabel)}</span>
-            <span class="badge badge-neutral">Massa lemak ${fmtNum(a.fatMass, 1)} kg</span>
-          </div>
+          <h2 class="bf-eyebrow">Indeks Massa Tubuh (BMI)</h2>
+          <div class="bmi-number bmi-primary" data-result="bmi">${fmtNum(a.bmi, 2)} <small>kg/m²</small></div>
+          <div class="badge-row"><span class="badge badge-${a.bmiTone}" data-result="category">${escapeHtml(a.bmiLabel)}</span></div>
         </div>
         <div class="target-panel">
-          <div class="tp-label">Target</div>
-          <div class="tp-value">${a.targetWeight != null ? `${fmtNum(a.targetWeight, 1)} kg` : '—'}</div>
-          <div class="tp-note">${a.targetBodyFat != null ? `Target body fat ${fmtNum(a.targetBodyFat)}% · ` : ''}${escapeHtml(a.timeline)}</div>
+          <div class="tp-label">Target Berat ${a.targetWeightManual ? 'Pilihan Anda' : 'Otomatis'}</div>
+          <div class="tp-value" data-result="target">${fmtNum(a.targetWeight, 1)} kg</div>
+          <div class="tp-note">${difference}</div>
+          <div class="tp-note">BMI pada target: ${fmtNum(a.targetBmi, 2)}</div>
         </div>
       </div>
-
-      <div class="spectrum">
-        <div class="spectrum-bar">
-          ${segments}
-          <span class="spectrum-marker" style="left:${markerPct.toFixed(2)}%" aria-hidden="true"></span>
-        </div>
-        <ul class="spectrum-legend" role="list">
-          ${BOUNDARIES.map((s) => `<li><strong>${s.min === 0 ? '<' : `${s.min}–`}${s.max}%</strong><span>${escapeHtml(categoryLabel(s.category))}</span></li>`).join('')}
-        </ul>
-      </div>
-
-      <div class="metric-grid">
-        ${metricCard('Tinggi', `${fmtNum(a.height, 1)} cm`, 'ruler')}
-        ${metricCard('BMR', `${fmtKcal(a.bmr)} kkal`, 'flame')}
-        ${metricCard('Kebutuhan Kalori (TDEE)', `${fmtKcal(a.tdee)} kkal`, 'zap')}
-        ${metricCard('Target Berat', a.targetWeight != null ? `${fmtNum(a.targetWeight, 1)} kg` : '—', 'scale')}
-      </div>
-
       <div class="bmi-spotlight">
-        <div>
-          <p class="bf-eyebrow">Indeks Massa Tubuh</p>
-          <div class="bmi-number">${fmtNum(a.bmi, 1)} <small>kg/m²</small></div>
-        </div>
         <div class="bmi-scale">
-          <div class="bmi-bar">${bmiBar}<span class="bmi-marker" style="left:${bmiPct.toFixed(2)}%"></span></div>
-          <div class="bmi-ticks">
-            <span>&lt; 18,5<br>Kurus</span>
-            <span>18,5 – 24,9<br>Normal</span>
-            <span>25 – 29,9<br>Berlebih</span>
-            <span>≥ 30<br>Obesitas</span>
+          <div class="bmi-bar">
+            ${BMI_RANGES.map((range) => `<span class="spectrum-segment" style="width:25%;background:${range.color}"></span>`).join('')}
+            <span class="bmi-marker" style="left:${marker.toFixed(2)}%" aria-hidden="true"></span>
           </div>
-          <p class="result-note">${icon('info', { size: 14 })} Estimasi body fat: ${escapeHtml(a.formula)}. Bukan diagnosis medis.</p>
+          <div class="bmi-ticks">
+            <span>&lt; 18,5<br>Kurang</span><span>18,5 – &lt; 25<br>Normal</span>
+            <span>25 – &lt; 30<br>Berlebih</span><span>≥ 30<br>Obesitas</span>
+          </div>
+          <p class="result-note">Kategori berdasarkan nilai BMI sebelum pembulatan.</p>
         </div>
       </div>
-      ${warningsHtml(a.warnings)}
+      <p class="result-note">${escapeHtml(a.bmiDescription)}</p>
+      <p class="result-note"><strong>Rentang berat untuk BMI normal:</strong> ${fmtNum(a.healthyWeight.min, 1)}–${fmtNum(a.healthyWeight.max, 1)} kg pada tinggi ${fmtNum(a.height, 1)} cm. Target otomatis menggunakan batas terdekat, atau berat saat ini jika sudah normal.</p>
+      <div class="metric-grid">
+        ${metricCard('Estimasi Lemak Tubuh', a.bodyFat == null ? 'Tidak tersedia' : `${fmtNum(a.bodyFat, 1)}%`, 'percent', 'body-fat')}
+        ${metricCard('BMR (Energi Istirahat)', `${fmtKcal(a.bmr)} kkal/hari`, 'flame')}
+        ${metricCard('Tinggi Badan', `${fmtNum(a.height, 1)} cm`, 'ruler')}
+        ${metricCard('Lingkar Pinggang', a.waist == null ? 'Belum diisi' : `${fmtNum(a.waist, 1)} cm`, 'ruler')}
+        ${metricCard('Lingkar Panggul', a.hip == null ? 'Belum diisi' : `${fmtNum(a.hip, 1)} cm`, 'ruler')}
+        ${metricCard('Rasio Pinggang / Panggul', a.waistHipRatio == null ? 'Belum tersedia' : fmtNum(a.waistHipRatio, 2), 'activity', 'waist-hip-ratio')}
+      </div>
+      <p class="result-note">${icon('info', { size: 14 })} BMI = ${fmtNum(a.weight, 1)} kg ÷ (${fmtNum(a.height / 100, 3)} m)². Jenis kelamin, umur, data lingkar, dan target berat tidak mengubah BMI.</p>
+      <p class="result-note">Estimasi lemak tubuh: ${escapeHtml(a.formula)}. BMR menggunakan Mifflin–St Jeor dan bukan kebutuhan kalori harian. Rasio pinggang-panggul tersedia jika kedua lingkar diisi. Hasil ini bukan diagnosis medis.</p>
+      ${a.warnings.map((warning) => `<div class="alert result-warning alert-warning" role="note"><span class="alert-icon">${icon('info', { size: 18 })}</span><div class="alert-body">${escapeHtml(warning.message)}</div></div>`).join('')}
     </section>`;
 }
 
-function metricCard(label, value, ic) {
-  return `
-    <div class="metric-card">
-      <div class="metric-label"><span class="card-icon">${icon(ic, { size: 16 })}</span>${label}</div>
-      <div class="metric-value">${value}</div>
-    </div>`;
-}
-
-/* -------- Warnings -------- */
-
-function warningsHtml(warnings) {
-  if (!warnings || warnings.length === 0) return '';
-  return warnings
-    .map(
-      (w) => `
-        <div class="alert result-warning ${w.severity === 'danger' ? 'alert-danger' : 'alert-warning'}" role="note">
-          <span class="alert-icon">${icon(w.severity === 'danger' ? 'alert-triangle' : 'info', { size: 18 })}</span>
-          <div class="alert-body">${escapeHtml(w.message)}</div>
-        </div>
-      `,
-    )
-    .join('');
+function metricCard(label, value, name, result = '') {
+  return `<div class="metric-card"><div class="metric-label"><span class="card-icon">${icon(name, { size: 16 })}</span>${label}</div><div class="metric-value"${result ? ` data-result="${result}"` : ''}>${value}</div></div>`;
 }

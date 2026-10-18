@@ -1,98 +1,56 @@
-/**
- * assessment.js — orchestrator kalkulasi → AssessmentResult.
- * Merekap body fat, kategori, BMI, BMR, TDEE, target, timeline, warning.
- */
-
-import { assertInputs, calculateBodyFat, bodyFatFormula, round1, BODY_FAT_VERSION } from './body-fat.js?v=male-fix-12';
-import { classifyBodyFat, categoryLabel, categoryColor } from './body-fat-classifier.js';
-import { calculateBmi, bmiLabel, bmiTone, bmiDescription } from './bmi.js';
+/** Calculator results; no plans, history, or activity assumptions. */
+import { assertInputs, calculateBodyFat, bodyFatFormula, round1 } from './body-fat.js?v=calculator-only-14';
+import { calculateBmi, bmiLabel, bmiTone, bmiDescription } from './bmi.js?v=calculator-only-14';
 import { calculateBmr } from './bmr.js';
-import { calculateTdee } from './tdee.js';
-import { calculateTargetWeight, leanMass } from './target-weight.js';
-import { buildWarnings } from './safety-guard.js?v=bmi-safety-13';
-import { resolveRule } from '../recommendation/engine.js?v=bmi-safety-13';
-import { CALCULATION_VERSION } from '../data/recommendation-rules.js';
+import { calculateTargetWeight, healthyWeightRange } from './target-weight.js?v=calculator-only-14';
 
-/**
- * @param {object} input
- *   { gender, age, weight, height, neck, waist, activityLevel,
- *     targetWeight: number|null, targetWeightManual: boolean }
- * @returns {object} AssessmentResult
- */
 export function buildAssessment(input) {
   assertInputs(input);
-
-  const bodyFat = calculateBodyFat(input);
-  const category = classifyBodyFat(bodyFat);
   const bmi = calculateBmi(input.weight, input.height);
-  const bmr = calculateBmr(input);
-  const tdee = calculateTdee(bmr, input.activityLevel);
-
-  const rule = resolveRule(input.gender, category, bmi);
-  const targetBodyFat = rule?.target_body_fat ?? rule?.target_body_fat_min ?? null;
-  const timeline = rule?.timeline_label ?? '—';
-
-  const targetWeightManual = input.targetWeightManual === true
-    && input.targetWeight !== null
-    && input.targetWeight !== undefined;
-
-  let targetWeight;
-  if (targetWeightManual) {
-    targetWeight = round1(Number(input.targetWeight));
-    if (bmi < 18.5 && targetWeight < input.weight) {
-      const error = new RangeError('BMI menunjukkan berat badan kurang. Target penurunan berat badan tidak dapat digunakan; konsultasikan target dengan tenaga kesehatan.');
-      error.field = 'targetWeight';
-      throw error;
-    }
-  } else {
-    targetWeight = category === 'moderate'
-      ? round1(input.weight)
-      : calculateTargetWeight(input.weight, bodyFat, targetBodyFat);
+  const bodyFat = calculateBodyFat(input);
+  const targetWeightManual = input.targetWeight != null && input.targetWeightManual !== false;
+  const targetWeight = targetWeightManual
+    ? input.targetWeight
+    : calculateTargetWeight(input.weight, input.height);
+  if (!Number.isFinite(targetWeight) || targetWeight < 30 || targetWeight > 300) {
+    const error = new RangeError('Target berat harus 30–300 kg.');
+    error.field = 'targetWeight';
+    throw error;
   }
-
-  const fatMass = round1((input.weight * bodyFat) / 100);
-  const fatMassCalc = round1(input.weight - fatMass);
-
-  const warnings = buildWarnings({
-    gender: input.gender,
-    bodyFat,
-    age: input.age,
-    weight: input.weight,
-    height: input.height,
-    bmi,
-  });
-
+  if (bmi < 18.5 && targetWeight < input.weight) {
+    const error = new RangeError('BMI menunjukkan berat badan kurang. Target berat tidak boleh lebih rendah dari berat saat ini.');
+    error.field = 'targetWeight';
+    throw error;
+  }
+  const targetBmi = calculateBmi(targetWeight, input.height);
+  const warnings = [];
+  if (targetWeightManual && (targetBmi < 18.5 || targetBmi >= 25)) {
+    warnings.push({ message: 'Target berat yang Anda isi berada di luar rentang BMI normal. Tinjau kembali target bersama tenaga kesehatan.' });
+  }
+  if (bodyFat === null) {
+    warnings.push({ message: 'Estimasi lemak tubuh tidak tersedia karena data berada di luar rentang estimasi 1–60%. Periksa pengukuran. Hasil BMI tetap dihitung dari berat dan tinggi badan.' });
+  }
   return {
-    id: `assessment_${Date.now().toString(36)}`,
-    createdAt: new Date().toISOString(),
     gender: input.gender,
     age: input.age,
     weight: input.weight,
     height: input.height,
-    neck: input.neck,
-    waist: input.waist,
+    waist: input.waist ?? null,
     hip: input.hip ?? null,
-    activityLevel: input.activityLevel,
-    targetWeight: input.targetWeight ?? null,
     targetWeightManual,
-    bodyFat,
-    category,
-    categoryLabel: categoryLabel(category),
-    categoryColor: categoryColor(category),
-    targetBodyFat,
     targetWeight,
-    timeline,
+    targetBmi,
+    healthyWeight: healthyWeightRange(input.height),
+    weightDiff: round1(input.weight - targetWeight),
     bmi,
     bmiLabel: bmiLabel(bmi),
     bmiTone: bmiTone(bmi),
     bmiDescription: bmiDescription(bmi),
-    bmr,
-    tdee,
-    fatMass,
-    leanMass: fatMassCalc,
-    weightDiff: targetWeight !== null ? round1(input.weight - targetWeight) : null,
+    bodyFat,
     formula: bodyFatFormula(input),
+    bmr: calculateBmr(input),
+    waistHipRatio: input.waist != null && input.hip != null ? input.waist / input.hip : null,
     warnings,
-    calculationVersion: `${BODY_FAT_VERSION}-${CALCULATION_VERSION}`,
+    calculationVersion: 'calculator-only-2.0',
   };
 }

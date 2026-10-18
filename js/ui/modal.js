@@ -99,8 +99,8 @@ export function confirmDialog({ title, body, confirmText = 'Ya, lanjutkan', dang
     const dialog = document.querySelector('#modal-root .modal');
     dialog.addEventListener('click', (e) => {
       if (e.target.closest('[data-modal-confirm]')) {
-        close();
         resolve(true);
+        close();
       } else if (e.target.closest('[data-modal-cancel]')) {
         close();
       }

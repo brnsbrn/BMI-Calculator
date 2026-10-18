@@ -11,7 +11,11 @@ export const BMI_LABELS = [
 ];
 
 export function calculateBmi(weight, heightCm) {
-  return round1(weight / Math.pow(heightCm / 100, 2));
+  if (!Number.isFinite(weight) || !Number.isFinite(heightCm) || weight <= 0 || heightCm <= 0) {
+    throw new RangeError('Berat dan tinggi badan harus berupa angka positif.');
+  }
+  // Keep full precision for category boundaries; only round for display.
+  return weight / Math.pow(heightCm / 100, 2);
 }
 
 export function bmiLabel(bmi) {
@@ -47,8 +51,4 @@ export function bmiDescription(bmi) {
 export function bmiMarkerPercent(bmi) {
   const clamp = Math.min(40, Math.max(10, bmi));
   return ((clamp - 10) / (40 - 10)) * 100;
-}
-
-function round1(value) {
-  return Math.round(value * 10) / 10;
 }

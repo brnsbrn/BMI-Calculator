@@ -5,218 +5,184 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BodyFit — Browser Tests</title>
   <style>
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #0f172a; color: #e2e8f0; padding: 24px; max-width: 880px; margin: 0 auto; }
-    h1, h2 { color: #7dd3fc; }
-    .ok { color: #34d399; }
-    .fail { color: #f87171; }
-    #summary { font-size: 18px; font-weight: 700; border-top: 1px solid #334155; margin-top: 18px; padding-top: 12px; }
-    pre { white-space: pre-wrap; line-height: 1.5; }
+    body { font: 15px/1.6 system-ui, sans-serif; background: #f4f8f5; color: #173f35; padding: 24px; }
+    h1 { font-size: 26px; }
+    #summary { font-weight: bold; }
+    #output { white-space: pre-wrap; }
+    iframe { display: block; height: 1100px; border: 1px solid #b9cfc5; margin-top: 20px; }
   </style>
 </head>
 <body>
   <h1>BodyFit — Browser Tests</h1>
-  <p>Jalankan dengan server statis (contoh: <code>python -m http.server 8000</code>) lalu buka <code>tests.html</code>.</p>
+  <p>Pengujian halaman kalkulator sebenarnya, dengan data sintetis. Data browser yang sudah ada dipulihkan sesudah pengujian.</p>
   <pre id="output"></pre>
-  <div id="summary"></div>
-
-  <header id="site-header"></header>
-  <footer id="site-footer"></footer>
-  <div id="test-chart-box" class="chart-box" style="position:relative;height:200px"></div>
-  <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
-  <div id="modal-root"></div>
-
+  <p id="summary" role="status">Pengujian berjalan…</p>
+  <iframe id="calculator" title="Kalkulator yang diuji" style="width:1400px"></iframe>
   <script type="module">
-    import { renderProgressChart } from './js/charts/progress-chart.js';
-    import { hydrateIcons } from './js/ui/icons.js';
-    import { initShell } from './js/ui/shell.js';
-    import { initCalculator } from './js/ui/calculator-ui.js';
-    import { setAssessment, setRecommendation, createPlanFromRecommendation, savePlan, resetState, getState, getPlan, getCurrentWeek, addCheckin, hasCheckinForWeek, incrementWeek, completedCount, toggleWorkout } from './js/state.js';
-    import { buildAssessment } from './js/calculator/assessment.js';
-    import { buildRecommendation } from './js/recommendation/engine.js';
-    import { validateBackup, applyImport } from './js/export-import.js';
-    import { validateCalculatorForm, validateCheckinForm } from './js/validation.js';
-    import { icon, hasIcon } from './js/ui/icons.js';
-
+    import { exportJson, STORAGE_KEY } from './js/storage.js?v=calculator-only-14';
+    import { buildAssessment } from './js/calculator/assessment.js?v=calculator-only-14';
+    const frame = document.getElementById('calculator');
     const output = document.getElementById('output');
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const savedTheme = localStorage.getItem('bodyfit-theme');
     let passed = 0, failed = 0;
-    const failures = [];
-
-    function log(line, cls = '') {
-      output.textContent += (cls ? `\n[${cls}] ` : '\n') + line;
-    }
-
-    function test(name, fn) {
-      return Promise.resolve()
-        .then(fn)
-        .then(() => { passed++; log(`ok   ${name}`, 'ok'); })
-        .catch((e) => { failed++; failures.push(name); log(`FAIL ${name} — ${e.message}`, 'fail'); });
-    }
-
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-    let outpass = Promise.resolve();
-
-    async function suite() {
-      /* ---- nonspecific ---- */
-      await test('classify via buildAssessment golden', async () => {
-        const a = buildAssessment({ gender: 'male', age: 28, weight: 85, height: 180, neck: 40, waist: 100, activityLevel: 'moderate', targetWeight: null, targetWeightManual: false });
-        if (a.category !== 'very_high') throw new Error(`kategori ${a.category}`);
-        if (a.bodyFat !== a.bodyFat) throw new Error('NaN bodyFat');
-      });
-
-      await test('validation errors waist<=neck', async () => {
-        const res = validateCalculatorForm({ gender: 'male', age: 25, weight: 70, height: 170, neck: 40, waist: 35, activityLevel: 'moderate', targetWeight: '' });
-        if (res.ok) throw new Error('seharusnya gagal');
-        if (!res.errors.waist) throw new Error('waist error missing');
-      });
-
-      await test('validation checkin ok', async () => {
-        const res = validateCheckinForm({ weight: '70', waist: '80', bodyFat: '20', workoutsCompleted: '4', energy: '3', difficulty: '3', feedback: '' });
-        if (!res.ok) throw new Error(JSON.stringify(res.errors));
-      });
-
-      /* ---- storage / import/export ---- */
-      await test('validateBackup reject+accept', () => {
-        if (validateBackup({ app: 'notbodyfit' }).ok) throw new Error('must reject');
-        if (validateBackup({ app: 'bodyfit', state: {} }).ok) throw new Error('state invalid (no version)');
-        if (!validateBackup({ app: 'bodyfit', state: { version: 1, assessment: null, checkins: [], progress: [], workoutStatus: {} } }).ok) throw new Error('should accept');
-      });
-
-      await test('applyImport mengisi state', async () => {
-        resetState();
-        const ok = applyImport({ version: 1, assessment: null, checkins: [], progress: [], workoutStatus: {}, preferences: { unit: 'metric' } });
-        if (!ok.ok) throw new Error(ok.error);
-        if (!getState()) throw new Error('state kosong setelah import');
-      });
-
-      /* ---- icon & shell ---- */
-      await test('icon set lengkap', () => {
-        for (const n of ['calculator', 'shield-check', 'clock', 'percent', 'user', 'users', 'target', 'activity', 'calendar', 'moon']) {
-          if (!hasIcon(n)) throw new Error(`ikon ${n} hilang`);
-        }
-        if (!icon('calculator').includes('<svg')) throw new Error('svg tidak dirender');
-      });
-
-      await test('data-icon ter-hydrate', () => {
-        document.body.insertAdjacentHTML('beforeend', '<div id="tmp-icon" data-icon="calculator"></div>');
-        hydrateIcons();
-        if (!document.getElementById('tmp-icon').querySelector('svg')) throw new Error('svg tidak masuk');
-        document.getElementById('tmp-icon').remove();
-      });
-
-      await test('shell merender nav + footer + menu', async () => {
-        initShell();
-        const links = document.querySelectorAll('#site-header .nav-desktop .nav-link');
-        if (links.length !== 4) throw new Error(`nav ${links.length}`);
-        const footer = document.getElementById('btn-export');
-        if (!footer) throw new Error('footer tidak dirender');
-      });
-
-      /* ---- chart ---- */
-      await test('renderProgressChart menghasilkan SVG + fallback', () => {
-        const box = document.getElementById('test-chart-box');
-        const res = renderProgressChart(box, {
-          points: [
-            { date: '2026-08-01', value: 88 },
-            { date: '2026-08-08', value: 86.5 },
-            { date: '2026-08-15', value: 85 },
-          ],
-          color: '#0b7b6c', unit: 'kg', valueLabel: 'Berat badan',
-        });
-        if (!res.ok || res.count !== 3) throw new Error('chart gagal');
-        if (!box.querySelector('svg path')) throw new Error('tidak ada path');
-      });
-
-      /* ---- calculator UI end-to-end ---- */
-      await test('kalkulator: submit → hasil tampil', async () => {
-        resetState();
-        document.body.insertAdjacentHTML('beforeend', fixtureForm());
-        hydrateIcons();
-
-        initCalculator();
-        const form = document.getElementById('calculator-form');
-
-        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-        // pilih pria dulu supaya neck tampil
-        const male = document.querySelector('#gender-seg .seg-option[data-value="male"]');
-        male?.click();
-        set('age', 32); set('weight', 88); set('height', 178); set('neck', 40); set('waist', 102); set('targetWeight', ''); set('activityLevel', 'moderate');
-
-        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-        await sleep(300);
-
-        const content = document.getElementById('result-content');
-        if (!content || content.hidden) throw new Error('hasil tidak tampil');
-        if (content.querySelector('.big-bf-number')?.textContent.includes('NaN')) throw new Error('NaN di hasil');
-        if (!getState().recommendation.mealPlan.length) throw new Error('menu tidak dibuat');
-        if (getState().assessment.bmi !== 27.8) throw new Error('BMI tidak sesuai input');
-        if (!getPlan()) throw new Error('rencana tidak tersimpan');
-        if (getCurrentWeek() !== 1) throw new Error('minggu harus 1');
-
-        const first = getState().assessment;
-        set('weight', 98); set('waist', 110); set('targetWeight', 75);
-        document.getElementById('weight').dispatchEvent(new Event('input', { bubbles: true }));
-        if (!content.hidden) throw new Error('hasil lama masih terlihat setelah input berubah');
-        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-        await sleep(300);
-        const second = getState().assessment;
-        if (second.bmi !== 30.9 || second.bmi === first.bmi) throw new Error('BMI tidak diperbarui');
-        if (second.bodyFat <= first.bodyFat) throw new Error('body fat tidak diperbarui');
-        if (second.targetWeight !== 75) throw new Error('target manual tidak terbaca');
-        if (!content.querySelector('.bmi-number').textContent.includes('30,9')) throw new Error('hasil DOM tidak terbaru');
-
-        set('weight', 88); set('waist', 102); set('targetWeight', '');
-        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-        await sleep(300);
-
-        // hapus fixture
-        document.getElementById('calculator-form').remove();
-        document.getElementById('result-panel')?.remove();
-      });
-
-      await test('check-in state + toggle tanpa duplikat', async () => {
-        const week = getCurrentWeek();
-        const { scheduled } = completedCount(getPlan());
-        if (scheduled !== 6) throw new Error(`scheduled ${scheduled}`);
-
-        toggleWorkout(week, (getPlan().workouts.find((w) => w.type !== 'rest').day_of_week));
-        if (completedCount(getPlan()).done !== 1) throw new Error('toggle gagal');
-
-        addCheckin({ week, date: '2026-08-30', weight: 86.5, waist: 99, bodyFat: null, workoutsScheduled: scheduled, workoutsCompleted: 1, energy: 4, difficulty: 3, feedback: '', weightChange: -1.5, waistChange: -3 });
-        if (!hasCheckinForWeek(week)) throw new Error('check-in belum tersimpan');
-        incrementWeek();
-        if (getCurrentWeek() !== week + 1) throw new Error('minggu tidak maju');
-        resetState();
-      });
-    }
-
-    suite().then(() => {
-      const total = passed + failed;
-      document.getElementById('summary').textContent = `\nTotal: ${failed === 0 ? 'PASS' : 'FAIL'} — ${passed}/${total} lolos`;
-      if (failed > 0) {
-        document.getElementById('summary').classList.add('fail');
-        log(`\nGagal: ${failures.join(', ')}`, 'fail');
+    let doc;
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const waitFor = async (predicate) => {
+      for (let i = 0; i < 150; i++) {
+        if (predicate()) return;
+        await new Promise((resolve) => setTimeout(resolve, 40));
       }
-    });
-
-    /* fixture form kalkulator minimal (ID sama dengan index.html) */
-    function fixtureForm() {
-      return `
-        <form id="calculator-form" novalidate>
-          <div id="gender-seg" class="segmented-control">
-            <button type="button" class="seg-option" data-value="male">Pria</button>
-            <button type="button" class="seg-option" data-value="female">Wanita</button>
-          </div>
-          <div class="input-group"><input id="age" name="age" type="number"></div>
-          <div class="input-group"><input id="weight" name="weight" type="number"></div>
-          <div class="input-group"><input id="height" name="height" type="number"></div>
-          <div class="input-group"><input id="neck" name="neck" type="number"></div>
-          <div class="input-group"><input id="waist" name="waist" type="number"></div>
-          <div class="input-group"><input id="targetWeight" name="targetWeight" type="number"></div>
-          <div class="input-group"><select id="activityLevel" name="activityLevel"><option value="sedentary">s</option><option value="light">l</option><option value="moderate">m</option><option value="active">a</option><option value="very_active">va</option></select></div>
-          <button type="submit">Hitung</button>
-        </form>
-        <div id="result-panel"><div id="result-empty"></div><div id="result-content" hidden></div></div>`;
+      throw new Error('Timeout menunggu halaman');
+    };
+    async function test(name, run) {
+      try { await run(); passed++; output.textContent += 'PASS ' + name + '\n'; }
+      catch (error) { failed++; output.textContent += 'FAIL ' + name + ': ' + error.message + '\n'; }
+    }
+    async function load(path = 'index.html') {
+      await new Promise((resolve, reject) => {
+        frame.onload = resolve;
+        frame.onerror = reject;
+        frame.src = path;
+      });
+      doc = frame.contentDocument;
+      await waitFor(() => doc.querySelector('#app-sidebar') && doc.querySelector('#calculator-form'));
+    }
+    function set(id, value) {
+      const element = doc.getElementById(id);
+      element.value = value;
+      element.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }));
+    }
+    function fill({ gender = 'male', age = 30, weight = 70, height = 175, waist = 85, hip = 100, targetWeight = '' } = {}) {
+      doc.querySelector('[data-value="' + gender + '"]').click();
+      for (const [id, value] of Object.entries({ age, weight, height, waist, hip, targetWeight })) set(id, value);
+    }
+    function calculate() { doc.getElementById('btn-calculate').click(); }
+    const result = (name) => doc.querySelector('[data-result="' + name + '"]')?.textContent;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      await load();
+      await test('Hanya navigasi Kalkulator pada desktop dan ponsel', () => {
+        for (const nav of doc.querySelectorAll('.sidebar-nav, .nav-desktop, #mobile-menu')) {
+          assert(nav.querySelectorAll('a.nav-link').length === 1, 'Jumlah tautan navigasi');
+          assert(nav.querySelector('a.nav-link').textContent.includes('Kalkulator'), 'Tautan bukan kalkulator');
+        }
+        assert(!doc.getElementById('neck') && !doc.getElementById('activityLevel'), 'Input lama masih ada');
+      });
+      await test('Submit kosong menampilkan validasi dan tidak menghasilkan angka', () => {
+        calculate();
+        assert(!doc.getElementById('gender-error').hidden, 'Jenis kelamin belum divalidasi');
+        assert(!doc.getElementById('height-error').hidden, 'Tinggi belum divalidasi');
+        assert(doc.getElementById('result-content').hidden, 'Hasil semestinya kosong');
+      });
+      await test('Pria tanpa lingkar leher: BMI, RFM, rasio dan target otomatis benar', () => {
+        fill(); calculate();
+        assert(result('bmi').includes('22,86'), 'BMI salah: ' + result('bmi'));
+        assert(result('body-fat') === '22,8%', 'RFM salah: ' + result('body-fat'));
+        assert(result('waist-hip-ratio') === '0,85', 'Rasio salah');
+        assert(result('target') === '70,0 kg', 'Target pemeliharaan salah');
+        assert(!doc.getElementById('result-content').textContent.includes('NaN'), 'NaN pada hasil');
+      });
+      await test('Perubahan input menyembunyikan hasil lama lalu menghitung ulang', () => {
+        set('weight', 90);
+        assert(doc.getElementById('result-content').hidden, 'Hasil lama masih terlihat');
+        set('targetWeight', 75); calculate();
+        assert(result('bmi').includes('29,39'), 'BMI tidak diperbarui');
+        assert(result('target') === '75,0 kg', 'Target manual tidak diperbarui');
+      });
+      await test('Wanita dapat menghitung tanpa input leher', () => {
+        fill({ gender: 'female', height: 170, waist: 85 }); calculate();
+        assert(result('body-fat') === '36,0%', 'RFM wanita salah');
+        assert(result('bmi').includes('24,22'), 'BMI wanita salah');
+      });
+      await test('Input lingkar dan target opsional tetap menghasilkan BMI', () => {
+        fill({ waist: '', hip: '' }); calculate();
+        assert(result('bmi').includes('22,86'), 'BMI hilang');
+        assert(result('waist-hip-ratio') === 'Belum tersedia', 'Rasio semestinya kosong');
+        assert(doc.getElementById('result-content').textContent.includes('Deurenberg'), 'Metode fallback tidak dijelaskan');
+      });
+      await test('Tinggi wajib dan tidak digantikan ukuran lingkar', () => {
+        set('height', ''); calculate();
+        assert(!doc.getElementById('height-error').hidden, 'Tinggi kosong diterima');
+        assert(doc.getElementById('result-content').hidden, 'Hasil lama tidak dibersihkan');
+      });
+      await test('Kategori menggunakan BMI sebelum pembulatan', () => {
+        fill({ height: 200, weight: 99.99 }); calculate();
+        assert(result('category') === 'Normal', '24.9975 dibulatkan sebelum kategori');
+      });
+      await test('Penurunan target ditolak saat BMI kurang', () => {
+        fill({ height: 167, weight: 42, targetWeight: 40 }); calculate();
+        assert(!doc.getElementById('targetWeight-error').hidden, 'Target berbahaya diterima');
+        assert(doc.getElementById('result-content').hidden, 'Hasil masih terlihat');
+      });
+      await test('Estimasi lemak di luar rentang tidak menggagalkan BMI', () => {
+        fill({ height: 180, waist: 40 }); calculate();
+        assert(result('body-fat') === 'Tidak tersedia', 'Estimasi dipaksa ke batas');
+        assert(result('bmi').includes('21,60'), 'BMI gagal');
+      });
+      await test('Desktop tidak meluap secara horizontal', () => {
+        assert(doc.documentElement.scrollWidth <= doc.documentElement.clientWidth + 1, 'Desktop overflow');
+      });
+      await test('Layar 390px menampilkan form dan hasil tanpa overflow', async () => {
+        frame.style.width = '390px';
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        assert(doc.documentElement.scrollWidth <= doc.documentElement.clientWidth + 1, 'Mobile overflow');
+        assert(doc.querySelector('#calculator-form').getBoundingClientRect().width <= 390, 'Form terlalu lebar');
+        fill({ gender: 'female' }); calculate();
+        assert(result('bmi').includes('22,86'), 'Kalkulasi mobile gagal');
+      });
+      await test('Tentang aplikasi menjelaskan kalkulator tanpa fitur lama', () => {
+        doc.getElementById('about-button').click();
+        const modal = doc.querySelector('.modal');
+        assert(modal.textContent.includes('RFM'), 'Metode tidak dijelaskan');
+        assert(!/Halaman Progres|Check-in|rencana nutrisi/.test(modal.textContent), 'Deskripsi fitur lama');
+        modal.querySelector('[data-modal-close]').click();
+      });
+      await test('Impor lewat dialog langsung memulihkan input dan hasil', async () => {
+        const backup = exportJson({ version: 2, assessment: buildAssessment({ gender: 'female', age: 35, weight: 65, height: 165, waist: 80, hip: 95, targetWeight: 60 }) });
+        doc.getElementById('btn-import').click();
+        const input = doc.getElementById('import-file-input');
+        const transfer = new frame.contentWindow.DataTransfer();
+        transfer.items.add(new frame.contentWindow.File([backup], 'test-backup.json', { type: 'application/json' }));
+        input.files = transfer.files;
+        input.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+        await waitFor(() => !doc.getElementById('import-confirm').hidden);
+        doc.getElementById('import-confirm').click();
+        await waitFor(() => doc.getElementById('weight').value === '65');
+        assert(doc.getElementById('weight').value === '65', 'Input tidak dipulihkan');
+        assert(result('bmi').includes('23,88'), 'Hasil impor salah');
+        assert(result('target') === '60,0 kg', 'Target impor salah');
+      });
+      await test('Konfirmasi reset benar-benar membersihkan kalkulator', async () => {
+        doc.getElementById('btn-reset').click();
+        doc.querySelector('[data-modal-confirm]').click();
+        await waitFor(() => doc.getElementById('weight').value === '');
+        assert(doc.getElementById('weight').value === '', 'Form belum kosong');
+        assert(doc.getElementById('result-content').hidden, 'Hasil belum kosong');
+      });
+      for (const path of ['plan.html', 'progress.html', 'check-in.html']) {
+        await test(path + ' dialihkan ke kalkulator', async () => {
+          await new Promise((resolve) => {
+            frame.onload = () => {
+              if (frame.contentWindow.location.pathname.endsWith('/index.html')) resolve();
+            };
+            frame.src = path;
+          });
+          await waitFor(() => {
+            try { return frame.contentWindow.location.pathname.endsWith('/index.html') && frame.contentDocument.querySelector('#app-sidebar'); }
+            catch { return false; }
+          });
+          assert(frame.contentWindow.location.pathname.endsWith('/index.html'), 'Tidak dialihkan');
+        });
+      }
+    } catch (error) {
+      failed++;
+      output.textContent += 'FAIL setup: ' + error.message + '\n';
+    } finally {
+      if (saved === null) localStorage.removeItem(STORAGE_KEY); else localStorage.setItem(STORAGE_KEY, saved);
+      if (savedTheme === null) localStorage.removeItem('bodyfit-theme'); else localStorage.setItem('bodyfit-theme', savedTheme);
+      document.getElementById('summary').textContent = passed + ' passed, ' + failed + ' failed';
+      document.documentElement.dataset.testStatus = failed ? 'failed' : 'passed';
     }
   </script>
 </body>

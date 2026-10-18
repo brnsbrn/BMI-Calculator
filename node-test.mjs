@@ -1,556 +1,244 @@
-/**
- * node-test.mjs — unit test untuk core engine (formula & boundary).
- * Referensi kasus: spesifikasi §73.
- *
- * Jalankan: npm test   atau   node node-test.mjs
- */
-
 import './js/tests/stub-localstorage.mjs';
-import { calculateBodyFat, navyMale, rfmFemale, assertInputs, round1 } from './js/calculator/body-fat.js';
-import { classifyBodyFat } from './js/calculator/body-fat-classifier.js';
-import { calculateBmi, bmiLabel } from './js/calculator/bmi.js';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { calculateBmi, bmiLabel } from './js/calculator/bmi.js?v=calculator-only-14';
+import { rfm, calculateBodyFat } from './js/calculator/body-fat.js?v=calculator-only-14';
 import { calculateBmr } from './js/calculator/bmr.js';
-import { calculateTdee } from './js/calculator/tdee.js';
-import { validateCalculatorForm, validateCheckinForm } from './js/validation.js';
-import { spectrumPosition } from './js/ui/spectrum.js';
-import { BOUNDARIES } from './js/calculator/body-fat-classifier.js';
-import { calculateTargetWeight, leanMass } from './js/calculator/target-weight.js';
-import { buildAssessment } from './js/calculator/assessment.js';
-import { calculateNutrition, CALORIE_FLOOR } from './js/recommendation/nutrition.js';
-import { buildRecommendation, resolveRule, adjustmentFromTarget, targetDisplay } from './js/recommendation/engine.js';
-import { generateMealPlan } from './js/recommendation/meal-plan.js';
-import { weeklySchedule, scheduledCount } from './js/recommendation/workout.js';
-import {
-  createPlanFromRecommendation, savePlan, getPlan, hasPlan, getCurrentWeek,
-  addCheckin, hasCheckinForWeek, computeChange, incrementWeek, resetState,
-  toggleWorkout, getWorkoutStatus, completedCount, workoutKey, getState,
-} from './js/state.js';
+import { buildAssessment } from './js/calculator/assessment.js?v=calculator-only-14';
+import { healthyWeightRange, calculateTargetWeight } from './js/calculator/target-weight.js?v=calculator-only-14';
+import { validateCalculatorForm } from './js/validation.js?v=calculator-only-14';
+import { normalizeState, createInitialState, saveState, loadState, clearState, exportJson, STORAGE_KEY } from './js/storage.js?v=calculator-only-14';
+import { validateBackup, parseImportFile, applyImport } from './js/export-import.js?v=calculator-only-14';
+import { getState, setAssessment, resetState } from './js/state.js?v=calculator-only-14';
 
-let passed = 0;
-let failed = 0;
-const failures = [];
+const base = { gender: 'male', age: 30, weight: 70, height: 175, waist: 85, hip: 100 };
+const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
 
-function test(name, fn) {
-  try {
-    fn();
-    passed++;
-    console.log(`  ok  ${name}`);
-  } catch (err) {
-    failed++;
-    failures.push({ name, message: err.message });
-    console.error(`FAIL  ${name}\n      ${err.message}`);
-  }
+test('BMI converts centimetres to metres before squaring: 70 / 1.75²', () => {
+  near(calculateBmi(70, 175), 22.857142857142858);
+  near(calculateBmi(85, 180), 26.234567901234566);
+});
+
+for (const [bmi, label] of [
+  [18.499, 'Berat badan kurang'], [18.5, 'Normal'], [24.999, 'Normal'],
+  [25, 'Berat badan berlebih'], [29.999, 'Berat badan berlebih'], [30, 'Obesitas'],
+]) {
+  test(`category uses unrounded BMI ${bmi}`, () => {
+    const a = buildAssessment({ ...base, height: 200, weight: bmi * 4 });
+    near(a.bmi, bmi);
+    assert.equal(a.bmiLabel, label);
+  });
 }
 
-function assert(cond, message) {
-  if (!cond) throw new Error(message || 'assertion failed');
+for (const [weight, height] of [[0, 175], [-1, 175], [70, 0], [70, NaN], [Infinity, 175]]) {
+  test(`invalid BMI inputs rejected (${weight}, ${height})`, () => assert.throws(() => calculateBmi(weight, height), RangeError));
 }
 
-function assertClose(actual, expected, tol = 0.11) {
-  if (typeof actual !== 'number' || Math.abs(actual - expected) > tol) {
-    throw new Error(`expected ~${expected}, got ${actual}`);
-  }
+test('gender, age, waist, hip and target do not change BMI', () => {
+  const a = buildAssessment(base);
+  const b = buildAssessment({ ...base, gender: 'female', age: 60, waist: 95, hip: 110, targetWeight: 65 });
+  assert.equal(a.bmi, b.bmi);
+  assert.notEqual(a.bodyFat, b.bodyFat);
+  assert.notEqual(a.bmr, b.bmr);
+  assert.notEqual(a.waistHipRatio, b.waistHipRatio);
+});
+
+test('RFM uses no neck measurement: male 170/85 = 24%, female = 36%', () => {
+  assert.equal(rfm('male', 170, 85), 24);
+  assert.equal(rfm('female', 170, 85), 36);
+  assert.equal(calculateBodyFat({ ...base, height: 170, waist: 85 }), 24);
+});
+
+for (const [gender, bodyFat] of [['male', 19.4], ['female', 30.2]]) {
+  test(`${gender}: no circumferences uses Deurenberg and still calculates BMI`, () => {
+    const a = buildAssessment({ ...base, gender, weight: 65, height: 165, waist: null, hip: null });
+    assert.equal(a.bodyFat, bodyFat);
+    assert.match(a.formula, /Deurenberg/);
+    assert.equal(a.waistHipRatio, null);
+    assert.ok(Number.isFinite(a.bmi));
+  });
 }
 
-console.log('=== Body Fat Calculator ===');
-
-test('male valid: metric NHRC density (170/38/86) → 18.6%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 170, neck: 38, waist: 86 }), 18.6);
+test('out-of-range body fat does not block or clamp BMI results', () => {
+  const a = buildAssessment({ ...base, height: 180, waist: 40 });
+  assert.equal(a.bodyFat, null);
+  near(a.bmi, 70 / 1.8 ** 2);
+  assert.equal(a.warnings.length, 1);
 });
 
-test('male valid: metric NHRC density (178/40/90) → 18.7%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 178, neck: 40, waist: 90 }), 18.7);
+test('BMR remains Mifflin–St Jeor and no activity multiplier is assumed', () => {
+  assert.equal(calculateBmr({ gender: 'male', age: 28, weight: 72, height: 170 }), 1648);
+  assert.equal(calculateBmr({ gender: 'female', age: 30, weight: 65, height: 165 }), 1370);
+  assert.ok(!('tdee' in buildAssessment(base)));
 });
 
-test('male valid: metric NHRC density (175/42/95) → 21.4%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 175, neck: 42, waist: 95 }), 21.4);
+test('hip is used in waist/hip ratio only when both are available', () => {
+  assert.equal(buildAssessment(base).waistHipRatio, 0.85);
+  assert.equal(buildAssessment({ ...base, hip: null }).waistHipRatio, null);
+  assert.equal(buildAssessment({ ...base, waist: null }).waistHipRatio, null);
 });
 
-test('male valid: metric NHRC density (165/35/75) → 12.8%', () => {
-  assertClose(calculateBodyFat({ gender: 'male', height: 165, neck: 35, waist: 75 }), 12.8);
+test('automatic target increases underweight, maintains normal, reduces overweight', () => {
+  assert.equal(calculateTargetWeight(42, 167), 51.6);
+  assert.equal(calculateTargetWeight(70, 175), 70);
+  assert.equal(calculateTargetWeight(90, 175), 76.5);
+  near(buildAssessment({ ...base, weight: 42, height: 167 }).targetBmi, 51.6 / 1.67 ** 2);
 });
 
-test('female valid: RFM (160/80) → 36.0%', () => {
-  assertClose(calculateBodyFat({ gender: 'female', height: 160, waist: 80 }), 36);
-});
-
-test('waist <= neck throws', () => {
-  let threw = false;
-  try {
-    assertInputs({ age: 25, weight: 70, height: 170, neck: 40, waist: 38 });
-  } catch (e) {
-    threw = e instanceof RangeError;
-  }
-  assert(threw, 'seharusnya membuang RangeError');
-});
-
-['age', 'weight', 'height', 'neck', 'waist'].forEach((field) => {
-  test(`${field} out of range throws`, () => {
-    const base = { age: 25, weight: 70, height: 170, neck: 36, waist: 80 };
-    const vals = {
-      age: 17,
-      weight: 29.9,
-      height: 119,
-      neck: 19,
-      waist: 39,
-    };
-    let threw = false;
-    try {
-      assertInputs({ ...base, [field]: vals[field] });
-    } catch (e) {
-      threw = e instanceof RangeError;
+test('normal weight bounds and automatic targets remain within BMI 18.5 to <25 across allowed heights', () => {
+  for (let mm = 1200; mm <= 2500; mm++) {
+    const height = mm / 10;
+    const range = healthyWeightRange(height);
+    for (const weight of [range.min, range.max]) {
+      const bmi = calculateBmi(weight, height);
+      assert.ok(bmi >= 18.5 && bmi < 25, `${height}cm, ${weight}kg => ${bmi}`);
     }
-    assert(threw, 'seharusnya membuang RangeError');
-  });
-});
-
-test('invalid activity level falls back to sedentary', () => {
-  const bmr = calculateBmr({ gender: 'male', weight: 70, height: 170, age: 25 });
-  assert(calculateTdee(bmr, 'invalid') === Math.round(bmr * 1.2));
-});
-
-test('male out-of-domain estimates are rejected, not forced to 1 or 60', () => {
-  for (const input of [
-    { gender: 'male', height: 180, neck: 32, waist: 60 },
-    { gender: 'male', height: 130, neck: 20, waist: 199 },
-  ]) {
-    let error;
-    try { calculateBodyFat(input); } catch (e) { error = e; }
-    assert(error instanceof RangeError && error.field === 'waist');
   }
 });
 
-test('male reported measurements vary with waist: 55, 65, 80 cm', () => {
-  const results = [55, 65, 80].map(waist => calculateBodyFat({ gender: 'male', height: 167, neck: 25, waist }));
-  assert(results[0] === 2.4 && results[1] === 12.5 && results[2] === 24.2, results.join(', '));
+test('manual target is preserved and does not alter current BMI', () => {
+  const a = buildAssessment({ ...base, targetWeight: 65 });
+  assert.equal(a.targetWeight, 65);
+  assert.equal(a.targetWeightManual, true);
+  near(a.bmi, 70 / 1.75 ** 2);
+  near(a.targetBmi, 65 / 1.75 ** 2);
 });
 
-test('female calculation and bounds remain unchanged', () => {
-  assert(calculateBodyFat({ gender: 'female', height: 160, waist: 80 }) === 36);
-  assert(calculateBodyFat({ gender: 'female', height: 130, waist: 199 }) === 60);
+test('manual weight loss is rejected while underweight', () => {
+  assert.throws(() => buildAssessment({ ...base, weight: 42, height: 167, targetWeight: 40 }), (error) => error.field === 'targetWeight');
 });
 
-test('BMI golden value (85/180) → 26.2', () => {
-  assertClose(calculateBmi(85, 180), 26.2);
+test('manual target outside normal BMI is clearly flagged', () => {
+  assert.match(buildAssessment({ ...base, targetWeight: 90 }).warnings[0].message, /di luar rentang BMI normal/);
 });
 
-test('BMI golden value (70/175) → 22.9', () => {
-  assertClose(calculateBmi(70, 175), 22.9);
+test('form accepts the requested fields without neck or activity', () => {
+  const result = validateCalculatorForm({ gender: 'female', age: '30', weight: '65.5', height: '165', waist: '80', hip: '95', targetWeight: '60' });
+  assert.equal(result.ok, true);
+  assert.equal(result.values.weight, 65.5);
+  assert.ok(!('neck' in result.values) && !('activityLevel' in result.values));
 });
 
-test('BMR male Mifflin-St Jeor (28,72,170) → 1648', () => {
-  assert(calculateBmr({ gender: 'male', weight: 72, height: 170, age: 28 }) === 1648);
+test('empty optional inputs do not prevent BMI calculation', () => {
+  const result = validateCalculatorForm({ ...base, waist: '', hip: '', targetWeight: '' });
+  assert.equal(result.ok, true);
+  assert.equal(result.values.waist, null);
+  assert.equal(result.values.targetWeightManual, false);
+  assert.ok(Number.isFinite(buildAssessment(result.values).bmi));
 });
 
-test('BMR female Mifflin-St Jeor (30,65,165) → 1370', () => {
-  assert(calculateBmr({ gender: 'female', weight: 65, height: 165, age: 30 }) === 1370);
-});
-
-test('lean mass = weight * (1 - bf%)', () => {
-  assert(leanMass(80, 20) === 64);
-});
-
-console.log('=== BMI boundaries ===');
-
-[
-  [18.4, 'Berat badan kurang'],
-  [18.5, 'Normal'],
-  [24.9, 'Normal'],
-  [25, 'Berat badan berlebih'],
-  [29.9, 'Berat badan berlebih'],
-  [30, 'Obesitas'],
-].forEach(([bmi, label]) => {
-  test(`bmi ${bmi} → ${label}`, () => {
-    assert(bmiLabel(bmi) === label);
-  });
-});
-
-console.log('=== Body fat category boundaries ===');
-
-[
-  [5.9, 'very_low'],
-  [6, 'low'],
-  [13.9, 'low'],
-  [14, 'moderate'],
-  [17.9, 'moderate'],
-  [18, 'high'],
-  [24.9, 'high'],
-  [25, 'very_high'],
-].forEach(([bf, category]) => {
-  test(`body fat ${bf} → ${category}`, () => {
-    assert(classifyBodyFat(bf) === category);
-  });
-});
-
-console.log('=== Target weight ===');
-
-test('target body fat null → target weight null', () => {
-  assert(calculateTargetWeight(80, 20, null) === null);
-  assert(calculateTargetWeight(80, 20, 0) === null);
-});
-
-test('target body fat valid (80kg, 20%bf, 15% target) → 75.3', () => {
-  assertClose(calculateTargetWeight(80, 20, 15), 75.3, 0.05);
-});
-
-test('target body fat valid (70kg, 10%bf, 14% target) → 73.3', () => {
-  assertClose(calculateTargetWeight(70, 10, 14), 73.3, 0.05);
-});
-
-test('manual target weight passed through', () => {
-  const a = buildAssessment({
-    gender: 'male', age: 25, weight: 80, height: 175, neck: 38, waist: 90,
-    activityLevel: 'moderate', targetWeight: 75, targetWeightManual: true,
-  });
-  assert(a.targetWeight === 75);
-  assert(a.targetWeightManual === true);
-  assert(a.weightDiff === 5);
-});
-
-test('target weight kosong → otomatis dihitung', () => {
-  const a = buildAssessment({
-    gender: 'male', age: 25, weight: 72, height: 170, neck: 36, waist: 84,
-    activityLevel: 'moderate', targetWeight: null, targetWeightManual: false,
-  });
-  assert(a.targetWeight !== null && a.targetWeight > 0);
-  assert(a.targetWeightManual === false);
-});
-
-console.log('=== Assessment ===');
-
-test('assessment lengkap male valid', () => {
-  const a = buildAssessment({
-    gender: 'male', age: 28, weight: 85, height: 180, neck: 40, waist: 95,
-    activityLevel: 'active', targetWeight: null, targetWeightManual: false,
-  });
-  assertClose(a.bmi, 26.2, 0.06);
-  assert(a.category === 'high', `kategori ${a.category} (bf ${a.bodyFat})`);
-  assert(a.targetBodyFat === 14, `target body fat ${a.targetBodyFat}`);
-  assert(a.timeline === '4–6 bulan');
-  assert(a.formula === 'US Navy (Hodgdon–Beckett)');
-  assert(a.bmr > 1000 && a.tdee > a.bmr);
-  assert(a.fatMass > 0 && a.leanMass > 0);
-  assert(Array.isArray(a.warnings));
-});
-
-test('assessment female valid + warning low bf', () => {
-  const a = buildAssessment({
-    gender: 'female', age: 30, weight: 60, height: 165, neck: 33, waist: 70,
-    activityLevel: 'light', targetWeight: null, targetWeightManual: false,
-  });
-  assert(a.formula === 'RFM (Woolcott & Bergman 2018)');
-  assert(a.targetBodyFat !== null);
-});
-
-console.log('=== Nutrition ===');
-
-const fakeRule = {
-  calorie_adjustment_min: -300,
-  calorie_adjustment_max: -200,
-  protein_per_kg: 1.6,
-  protein_per_kg_max: 2.0,
-  macro_protein: 30,
-  macro_carb: 40,
-  macro_fat: 30,
-};
-
-test('nutrition: tdee 2500 → target 2250, floor respected', () => {
-  const n = calculateNutrition({ tdee: 2500, weight: 72 }, fakeRule);
-  assert(n.calorie_target === 2250);
-  assert(n.calorie_target_min === 2200);
-  assert(n.calorie_target_max === 2300);
-  assertClose(n.protein_target, 129.6, 0.05);
-  assertClose(n.protein_target_min, 115.2, 0.05);
-  assertClose(n.protein_target_max, 144, 0.05);
-  assertClose(n.fat_target, 75, 0.05);
-  assertClose(n.carb_target, 264.2, 0.05);
-});
-
-test('nutrition: floor 1200 kkal', () => {
-  const n = calculateNutrition({ tdee: 1000, weight: 50 }, fakeRule);
-  assert(n.calorie_target === CALORIE_FLOOR);
-  assert(n.calorie_target === 1200);
-});
-
-test('macros sum to ~100% in calories', () => {
-  const n = calculateNutrition({ tdee: 2500, weight: 72 }, fakeRule);
-  const total = n.protein_target * 4 + n.carb_target * 4 + n.fat_target * 9;
-  assert(Math.abs(total - n.calorie_target) < 2);
-});
-
-test('adjustment override from manual target', () => {
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 70, targetWeightManual: true }) === -500);
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 77, targetWeightManual: true }) === -350);
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 90, targetWeightManual: true }) === 400);
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 82, targetWeightManual: true }) === 250);
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 80, targetWeightManual: true }) === 0);
-  assert(adjustmentFromTarget({ weight: 80, targetWeight: 75, targetWeightManual: false }) === null);
-});
-
-console.log('=== Recommendation engine ===');
-
-test('targetDisplay formats correctly', () => {
-  assert(targetDisplay({ target_body_fat: 14 }) === '14%');
-  assert(targetDisplay({ target_body_fat: null, target_body_fat_min: 14, target_body_fat_max: 18 }) === '14–18%');
-  assert(targetDisplay({ target_body_fat: null }) === 'Pertahankan');
-});
-
-test('resolveRule male/high exists', () => {
-  const rule = resolveRule('male', 'high');
-  assert(rule && rule.primary_focus === 'Penurunan Lemak');
-  assert(rule.workout_template === 'upper_lower_cardio');
-});
-
-test('buildRecommendation produces full result & deterministic meal plan', () => {
-  const a = buildAssessment({
-    gender: 'male', age: 28, weight: 85, height: 180, neck: 40, waist: 100,
-    activityLevel: 'moderate', targetWeight: 70, targetWeightManual: true,
-  });
-  const r1 = buildRecommendation(a);
-  const r2 = buildRecommendation(a);
-
-  assert(a.category === 'very_high', `kategori ${a.category} (bf ${a.bodyFat})`);
-  assert(r1.primaryFocus === 'Penurunan Lemak');
-  assert(r1.mealPlan.length === 5);
-  assert(JSON.stringify(r1.mealPlan) === JSON.stringify(r2.mealPlan), 'meal plan harus deterministik');
-  assert(r1.weeklySchedule.length === 7);
-  assert(r1.calorieTarget >= 1200);
-  assert(r1.calorieTargetMin <= r1.calorieTarget && r1.calorieTarget <= r1.calorieTargetMax);
-  assert(r1.safetyFlag === false);
-});
-
-test('workout weekly schedule has 7 days + scheduled count', () => {
-  const days = weeklySchedule('upper_lower_cardio');
-  assert(days.length === 7);
-  assert(days[0].day_of_week === 1);
-  assert(scheduledCount(days) === 6); // 1 rest
-});
-
-test('female moderate → template full_body_recreational_f', () => {
-  const a = buildAssessment({
-    gender: 'female', age: 30, weight: 55, height: 168, neck: 34, waist: 56,
-    activityLevel: 'light', targetWeight: null, targetWeightManual: false,
-  });
-  const r = buildRecommendation(a);
-  assert(a.category === 'moderate', `kategori ${a.category} (bf ${a.bodyFat})`);
-  assert(r.rule.workout_template === 'full_body_recreational_f');
-});
-
-test('safety flag for very_low category', () => {
-  const a = buildAssessment({
-    gender: 'male', age: 25, weight: 65, height: 180, neck: 32, waist: 65,
-    activityLevel: 'moderate', targetWeight: null, targetWeightManual: false,
-  });
-  const r = buildRecommendation(a);
-  assert(r.rule.safety_flag === true);
-  assert(a.warnings.some((w) => w.code === 'body_fat_low'));
-});
-
-test('meal plan seed stable & 5 meals', () => {
-  const meal = generateMealPlan({ calorieTarget: 2250, proteinTarget: 129.6, carbTarget: 264.2, fatTarget: 75 }, 12345);
-  assert(meal.length === 5);
-  assert(meal[0].meal === 'Sarapan');
-  const meal2 = generateMealPlan({ calorieTarget: 2250, proteinTarget: 129.6, carbTarget: 264.2, fatTarget: 75 }, 12345);
-  assert(JSON.stringify(meal) === JSON.stringify(meal2));
-  const total = meal.reduce((s, m) => s + m.calories, 0);
-  assert(total > 0);
-});
-
-console.log('=== State: plan, check-in, workout ===');
-
-const profile = () => ({
-  gender: 'male', age: 32, weight: 88, height: 178, neck: 40, waist: 102,
-  activityLevel: 'moderate', targetWeight: null, targetWeightManual: false,
-});
-
-test('createPlanFromRecommendation → plan minggu 1 + baseline', () => {
-  resetState();
-  const a = buildAssessment(profile());
-  const r = buildRecommendation(a);
-  const { plan, baselineLog } = createPlanFromRecommendation(a, r);
-
-  assert(plan.currentWeek === 1);
-  assert(plan.mealPlan.length === 5);
-  assert(plan.workouts.length === 7);
-  assert(plan.nutrition.calorieTarget >= 1200);
-  assert(baselineLog.source === 'assessment');
-  assert(baselineLog.weight === 88);
-
-  savePlan(plan, baselineLog);
-  assert(hasPlan());
-  assert(getPlan().id === plan.id);
-  assert(getCurrentWeek() === 1);
-});
-
-test('check-in: simpan, duplikat dicegah, minggu maju', () => {
-  const week = getCurrentWeek(); // 1
-  const changes = computeChange(86.5, 99); // dibandingkan baseline 88 kg / 102 cm
-  assert(Math.abs(changes.weightChange - (-1.5)) < 0.001, `weightChange ${changes.weightChange}`);
-  assert(Math.abs(changes.waistChange - (-3)) < 0.001, `waistChange ${changes.waistChange}`);
-
-  addCheckin({
-    week,
-    date: '2026-08-30',
-    weight: 86.5,
-    waist: 99,
-    bodyFat: null,
-    workoutsScheduled: 6,
-    workoutsCompleted: 5,
-    energy: 4,
-    difficulty: 3,
-    feedback: '',
-    weightChange: changes.weightChange,
-    waistChange: changes.waistChange,
-  });
-
-  assert(hasCheckinForWeek(1) === true, 'minggu 1 harus tercatat');
-  assert(hasCheckinForWeek(2) === false);
-
-  incrementWeek();
-  assert(getCurrentWeek() === 2);
-  assert(hasCheckinForWeek(2) === false);
-});
-
-test('computeChange dari log terakhir', () => {
-  // posisi: baseline 88/102 → check-in 86.5/99 → hitung ke nilai baru 85/98
-  const changes = computeChange(85, 98);
-  assert(Math.abs(changes.weightChange - (-1.5)) < 0.001, `weightChange ${changes.weightChange}`);
-  assert(Math.abs(changes.waistChange - (-1)) < 0.001, `waistChange ${changes.waistChange}`);
-});
-
-test('workout toggle on/off + completedCount', () => {
-  const plan = getPlan();
-  const before = completedCount(plan);
-  assert(before.done === 0);
-
-  const firstWorkout = plan.workouts.find((w) => w.type !== 'rest');
-  const day = firstWorkout.day_of_week;
-  const week = plan.currentWeek; // sekarang minggu 2
-
-  toggleWorkout(week, day);
-  assert(getWorkoutStatus(week, day)?.completed === true);
-  assert(completedCount(plan).done === 1);
-
-  toggleWorkout(week, day);
-  assert(getWorkoutStatus(week, day) === null);
-  assert(completedCount(plan).done === 0);
-
-  assert(workoutKey(2, 3) === '2_3');
-});
-
-test('reset menghapus seluruh state', () => {
-  resetState();
-  assert(!hasPlan());
-  assert(getState().checkins.length === 0);
-});
-
-console.log('=== Summary ===');
-test('reported 42kg / 167cm profile is underweight, with no automatic weight-loss target', () => {
-  const a = buildAssessment({ gender: 'male', age: 25, weight: 42, height: 167, neck: 26, waist: 80, hip: 55, activityLevel: 'moderate' });
-  const r = buildRecommendation(a);
-  assert(a.bmi === 15.1 && a.bmiLabel === 'Berat badan kurang');
-  assert(a.bodyFat === 23.5 && a.category === 'high');
-  assert(a.targetWeight === null && a.targetBodyFat === null);
-  assert(a.warnings.some(w => w.code === 'bmi_underweight'));
-  assert(r.calorieTarget >= a.tdee && r.safetyFlag);
-  assert(r.primaryFocus === 'Pemulihan Berat Badan');
-  assert(r.weeklySchedule.every(day => day.type === 'rest'));
-});
-
-test('underweight manual lower-weight target rejected, higher-weight target accepted', () => {
-  const input = { gender: 'male', age: 25, weight: 42, height: 167, neck: 26, waist: 80, activityLevel: 'moderate', targetWeightManual: true };
-  let error;
-  try { buildAssessment({ ...input, targetWeight: 37 }); } catch (e) { error = e; }
-  assert(error instanceof RangeError && error.field === 'targetWeight');
-  const a = buildAssessment({ ...input, targetWeight: 52 });
-  assert(a.targetWeight === 52 && buildRecommendation(a).calorieTarget >= a.tdee);
-});
-
-test('nutrition cannot prescribe a deficit for underweight, even with override', () => {
-  const n = calculateNutrition({ bmi: 15.1, tdee: 2083, weight: 42 }, { calorie_adjustment_min: -500, calorie_adjustment_max: -300 }, -500);
-  assert(n.calorie_target === 2083 && n.calorie_target_min === 2083 && n.calorie_target_max === 2083);
-});
-
-test('body fat gauge marker aligns with category bands and boundaries', () => {
-  assertClose(spectrumPosition(23.5, BOUNDARIES), 75.7);
-  for (const [value, position] of [[0, 0], [6, 20], [14, 40], [18, 60], [25, 80], [60, 100]]) {
-    assertClose(spectrumPosition(value, BOUNDARIES), position, 0.001);
-  }
-});
-
-test('BMI gauge marker aligns with BMI bands', () => {
-  const ranges = [{ min: 12, max: 18.5 }, { min: 18.5, max: 25 }, { min: 25, max: 30 }, { min: 30, max: 45 }];
-  assert(spectrumPosition(15.1, ranges) < 25);
-  assert(spectrumPosition(23.5, ranges) >= 25 && spectrumPosition(23.5, ranges) < 50);
-});
-test('recalculation changes BMI, body fat, BMR and TDEE', () => {
-  const a = buildAssessment({ gender: 'male', age: 25, weight: 70, height: 175, neck: 38, waist: 80, activityLevel: 'light' });
-  const b = buildAssessment({ gender: 'male', age: 25, weight: 90, height: 175, neck: 38, waist: 100, activityLevel: 'active' });
-  assert(a.bmi === 22.9 && b.bmi === 29.4);
-  assert(b.bodyFat > a.bodyFat && b.bmr > a.bmr && b.tdee > a.tdee);
-});
-
-for (const gender of ['male', 'female']) {
-  test(`${gender}: missing circumferences uses Deurenberg, with correct method label`, () => {
-    const a = buildAssessment({ gender, age: 30, weight: 65, height: 165, neck: null, waist: null });
-    assertClose(a.bodyFat, gender === 'male' ? 19.4 : 30.2);
-    assert(a.formula.startsWith('Deurenberg'));
-  });
-  test(`${gender}: maintenance category retains current weight`, () => {
-    const a = buildAssessment({ gender, age: 25, weight: 60, height: 165, neck: null, waist: null });
-    const maintenance = { ...a, category: 'moderate', bodyFat: 16 };
-    const r = buildRecommendation(maintenance);
-    assert(r.calorieTarget === maintenance.tdee);
-    const measured = buildAssessment({ gender, age: 25, weight: 60, height: gender === 'male' ? 165 : 168, neck: gender === 'male' ? 38 : null, waist: gender === 'male' ? 81 : 56 });
-    assert(measured.category === 'moderate', measured.category);
-    assert(measured.targetWeight === measured.weight);
-  });
-  test(`${gender}: document category targets and timelines`, () => {
-    for (const [category, target, timeline] of [
-      ['very_high', 18, '8–12 bulan'], ['high', 14, '4–6 bulan'],
-      ['low', gender === 'male' ? 8 : 14, '3–6 bulan'],
-      ['very_low', gender === 'male' ? 8 : 14, gender === 'male' ? '1–2 bulan' : '1–3 bulan'],
-    ]) {
-      const rule = resolveRule(gender, category);
-      assert(rule.target_body_fat === target && rule.timeline_label === timeline);
-    }
-  });
-}
-
-test('calculator validation rejects malformed optional values, Infinity and fractional age', () => {
-  const base = { gender: 'male', age: '25', weight: '70', height: '175', activityLevel: 'moderate' };
-  assert(validateCalculatorForm(base).ok);
-  for (const [field, value] of [['neck', 'bad'], ['waist', 'Infinity'], ['hip', '10'], ['targetWeight', 'bad'], ['weight', 'Infinity'], ['age', '25.5'], ['activityLevel', 'bad']]) {
+for (const [field, value] of [
+  ['gender', ''], ['age', '17'], ['age', '25.5'], ['age', '81'], ['weight', ''],
+  ['weight', 'Infinity'], ['height', '0'], ['height', 'bad'], ['waist', 'bad'],
+  ['waist', '39'], ['hip', '201'], ['targetWeight', 'bad'], ['targetWeight', '29'],
+]) {
+  test(`invalid ${field}=${value} is rejected with a field error`, () => {
     const result = validateCalculatorForm({ ...base, [field]: value });
-    assert(!result.ok && result.errors[field], `${field} must fail`);
+    assert.equal(result.ok, false);
+    assert.ok(result.errors[field]);
+  });
+}
+
+test('legacy inputs cannot reintroduce neck or planning state', () => {
+  const result = validateCalculatorForm({ ...base, neck: -100, activityLevel: 'active', plan: {} });
+  assert.equal(result.ok, true);
+  assert.ok(!('neck' in result.values) && !('plan' in result.values));
+});
+
+test('legacy backup is migrated, recalculated, and exports calculator data only', () => {
+  const old = { app: 'bodyfit', state: { version: 1, assessment: { ...base, neck: 40, activityLevel: 'active', bmi: 999, bodyFat: 999 }, plan: {}, progress: [{}], checkins: [{}], workoutStatus: {} } };
+  const result = validateBackup(old);
+  assert.equal(result.ok, true);
+  assert.equal(result.data.version, 2);
+  assert.deepEqual(Object.keys(result.data).sort(), ['assessment', 'version']);
+  near(result.data.assessment.bmi, 70 / 1.75 ** 2);
+  for (const field of ['neck', 'plan', 'progress', 'checkins', 'activityLevel']) assert.ok(!exportJson(result.data).includes(`"${field}"`));
+});
+
+test('backups reject bad measurement data and unsupported structure', () => {
+  for (const backup of [{}, { app: 'other' }, { app: 'bodyfit', state: { version: 9 } }, { app: 'bodyfit', state: { version: 2, assessment: { ...base, height: 0 } } }]) {
+    assert.equal(validateBackup(backup).ok, false);
+  }
+  assert.equal(validateBackup({ app: 'bodyfit', state: createInitialState() }).ok, true);
+});
+
+test('file import reports invalid JSON and restores a valid calculator result', async () => {
+  assert.equal((await parseImportFile({ text: async () => '{bad' })).ok, false);
+  const parsed = await parseImportFile({ text: async () => exportJson({ version: 2, assessment: buildAssessment(base) }) });
+  assert.equal(parsed.ok, true);
+  near(parsed.preview.bmi, 70 / 1.75 ** 2);
+  assert.equal(applyImport(parsed.data).ok, true);
+  assert.equal(getState().assessment.weight, 70);
+  assert.equal(applyImport({ version: 99 }).ok, false);
+});
+
+test('latest result persists and reset clears it', () => {
+  setAssessment(buildAssessment(base));
+  assert.equal(loadState().state.assessment.weight, 70);
+  setAssessment(buildAssessment({ ...base, weight: 80 }));
+  assert.equal(getState().assessment.weight, 80);
+  resetState();
+  assert.equal(getState().assessment, null);
+  assert.equal(localStorage.getItem(STORAGE_KEY), null);
+});
+
+test('corrupt saved data starts with an empty calculator', () => {
+  localStorage.setItem(STORAGE_KEY, '{broken');
+  assert.equal(loadState().corrupt, true);
+  clearState();
+});
+
+test('calculator works when localStorage writes fail, without restoring stale values', () => {
+  saveState({ version: 2, assessment: buildAssessment(base) });
+  const original = localStorage.setItem;
+  localStorage.setItem = () => { throw new Error('quota'); };
+  try {
+    saveState({ version: 2, assessment: buildAssessment({ ...base, weight: 85 }) });
+    assert.equal(loadState().state.assessment.weight, 85);
+    assert.equal(applyImport({ version: 2, assessment: buildAssessment({ ...base, weight: 95 }) }).ok, true);
+    assert.equal(getState().assessment.weight, 95);
+    clearState();
+    assert.equal(loadState().state.assessment, null);
+  } finally { localStorage.setItem = original; }
+});
+
+test('only the calculator is routed and old URLs redirect', () => {
+  const app = readFileSync('js/app.js', 'utf8');
+  assert.ok(!/plan-ui|progress-ui|checkin-ui/.test(app));
+  const html = readFileSync('index.html', 'utf8');
+  assert.ok(!/id="neck"|id="activityLevel"|css\/(plan|progress|check-in)\.css/.test(html));
+  for (const path of ['plan.html', 'progress.html', 'check-in.html']) {
+    const source = readFileSync(path, 'utf8');
+    assert.match(source, /window.location.replace/);
+    assert.ok(!/data-page=/.test(source));
+  }
+  for (const path of ['js/ui/plan-ui.js', 'js/ui/progress-ui.js', 'js/ui/checkin-ui.js']) assert.equal(existsSync(path), false);
+});
+
+test('all calculator modules parse and local imports exist after feature removal', () => {
+  for (const entry of readdirSync('js', { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+    const file = resolve(entry.parentPath ?? entry.path, entry.name);
+    const checked = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+    assert.equal(checked.status, 0, checked.stderr);
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(/from ['"]([^'"]+)['"]/g)) {
+      if (!match[1].startsWith('.')) continue;
+      assert.ok(existsSync(resolve(dirname(file), match[1].split('?')[0])), `${file}: missing ${match[1]}`);
+    }
   }
 });
 
-test('check-in values are numeric after form validation', () => {
-  const result = validateCheckinForm({ weight: '70.5', waist: '80', bodyFat: '20', workoutsCompleted: '4', energy: '3', difficulty: '3' });
-  assert(result.ok && result.values.weight === 70.5 && result.values.waist === 80);
+test('calculator HTML assets exist and browser test script parses', () => {
+  const html = readFileSync('index.html', 'utf8');
+  for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
+    if (/^(?:https?:|#)/.test(match[1])) continue;
+    assert.ok(existsSync(match[1].split('?')[0]), `missing asset ${match[1]}`);
+  }
+  const browserTests = readFileSync('tests.html', 'utf8').match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  assert.doesNotThrow(() => new AsyncFunction(browserTests.replace(/^\s*import .+;$/gm, '')));
 });
-
-test('recalculation preserves ongoing week and progress history', () => {
-  resetState();
-  const first = buildAssessment(profile());
-  const initial = createPlanFromRecommendation(first, buildRecommendation(first));
-  savePlan(initial.plan, initial.baselineLog);
-  addCheckin({ week: 1, date: '2026-08-30', weight: 86, waist: 100, bodyFat: 25 });
-  incrementWeek();
-  const history = JSON.stringify(getState().progress);
-  const updated = buildAssessment({ ...profile(), weight: 86, waist: 100 });
-  const next = createPlanFromRecommendation(updated, buildRecommendation(updated));
-  savePlan(next.plan, next.baselineLog);
-  assert(getCurrentWeek() === 2 && !hasCheckinForWeek(2));
-  assert(getPlan().id === initial.plan.id);
-  assert(JSON.stringify(getState().progress) === history);
-  resetState();
-});
-console.log(`\nPassed: ${passed}  Failed: ${failed}`);
-if (failed > 0) {
-  console.error('\nFailures:');
-  failures.forEach((f) => console.error(` - ${f.name}: ${f.message}`));
-  process.exit(1);
-}
-process.exit(0);

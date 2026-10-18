@@ -1,21 +1,18 @@
-/**
- * target-weight.js — estimasi target berat berbasis lean body mass.
- *   leanMass = weight * (1 − bodyFat/100)
- *   target   = leanMass / (1 − targetBodyFat/100)
- */
+import { calculateBmi } from './bmi.js?v=calculator-only-14';
 
-export function leanMass(weight, bodyFat) {
-  return round1(weight * (1 - bodyFat / 100));
+/** Normal BMI is 18.5 inclusive to 25 exclusive. Round bounds inward to 0.1 kg. */
+export function healthyWeightRange(heightCm) {
+  const heightSquared = (heightCm / 100) ** 2;
+  return {
+    min: Math.ceil(18.5 * heightSquared * 10) / 10,
+    max: (Math.ceil(25 * heightSquared * 10) - 1) / 10,
+  };
 }
 
-export function calculateTargetWeight(weight, bodyFat, targetBodyFat) {
-  if (targetBodyFat === null || targetBodyFat === undefined || targetBodyFat <= 0 || targetBodyFat >= 100) {
-    return null;
-  }
-  const lean = weight * (1 - bodyFat / 100);
-  return round1(lean / (1 - targetBodyFat / 100));
-}
-
-function round1(value) {
-  return Math.round(value * 10) / 10;
+export function calculateTargetWeight(weight, heightCm) {
+  const bmi = calculateBmi(weight, heightCm);
+  const { min, max } = healthyWeightRange(heightCm);
+  if (bmi < 18.5) return min;
+  if (bmi >= 25) return max;
+  return weight;
 }

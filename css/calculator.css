@@ -153,6 +153,11 @@
   font-weight: 600;
 }
 
+.bmi-number.bmi-primary {
+  font-size: clamp(42px, 4vw, 64px);
+  line-height: 1.1;
+}
+
 .bmi-scale {
   flex: 1;
   min-width: 240px;
